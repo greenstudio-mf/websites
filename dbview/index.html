@@ -8,8 +8,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+    .fixed-logo {
+        position: fixed !important;
+        top: 1rem !important;
+        left: 1rem !important;
+        z-index: 9999 !important;
+        width: 48px !important;
+        height: auto !important;
+    }
+    .fixed-back-btn {
+        position: fixed !important;
+        top: 1rem !important;
+        right: 1rem !important;
+        z-index: 9999 !important;
+    }
+</style>
 </head>
-<body><div class="fixed top-4 left-4 z-50"><img src="/websites/logo_backgroundl.png" class="h-12 w-auto rounded shadow-sm" alt="Logo"></div><a href="/websites/" class="fixed top-4 right-4 z-50 bg-white px-4 py-2 rounded-full shadow-md text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all border border-slate-200">← 返回首頁</a>
+<body><div class="fixed-logo"><img src="/websites/logo_backgroundl.png" class="h-12 w-auto rounded shadow-sm" alt="Logo"></div><a href="/websites/" class="fixed-back-btn bg-white px-4 py-2 rounded-full shadow-md text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all border border-slate-200">← 返回首頁</a>
     <div class="container animate-fade-in">
         <header>
             <h1>Recipe.db 轉換器</h1>
