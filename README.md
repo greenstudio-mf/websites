@@ -39,6 +39,12 @@ websites/
 - **Access**: `/epower/`
 
 
+
+### 📊 TMIS 模具管理系統
+- **Purpose**: Tooling and production management system for tracking and quality control.
+- **Access**: `/tmis/`
+
+
 ## ⚙️ Deployment Strategy
 
 This repository uses a **GitHub API-driven deployment workflow** instead of traditional Git CLI to maximize stability and speed:
