@@ -1,6 +1,6 @@
-# 🛠️ MF-Studio Web Tools Collection
+# 🛠️ GREEN Web Tools Collection
 
-Welcome to the MF-Studio Web Tools repository. This repository hosts a collection of specialized engineering calculation and management tools, deployed via GitHub Pages.
+Welcome to the GREEN Web Tools repository. This repository hosts a collection of specialized engineering calculation and management tools, deployed via GitHub Pages.
 
 ## 🌐 Live Site
 👉 **[https://greenstudio-mf.github.io/websites/](https://greenstudio-mf.github.io/websites/)**
