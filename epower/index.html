@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PU灌注生產線設備功率計算工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as a single-page dashboard. The user flow is linear: 1. Upload data (Excel/CSV) or use sample data. 2. View and interact with the data in two separate, editable tables (PU Machine, Conveyor). 3. Instantly see calculated results in summary cards and a visual chart. 3. Instantly see calculated results in summary cards and a visual chart. This task-oriented structure was chosen for its clarity and efficiency, allowing users to quickly move from data input to analysis without navigating multiple pages. The separation of machines into distinct tabs/tables simplifies management of complex equipment lists. -->
+    <!-- Visualization & Content Choices: Report Info: Total power consumption by equipment type. -> Goal: Compare power distribution. -> Viz/Presentation Method: Donut Chart (Chart.js/Canvas). -> Interaction: Hover to see details. -> Justification: A donut chart is excellent for showing part-to-whole relationships, making it easy to identify the most power-hungry equipment types at a glance. Report Info: Key calculated metrics (Total Power, Total Current, Recommended Breaker). -> Goal: Inform user of critical values. -> Viz/Presentation Method: Key Metric Cards (HTML/CSS). -> Interaction: None. -> Justification: Cards provide a high-visibility, easily digestible summary of the most important results. Report Info: Detailed equipment list. -> Goal: Organize and allow modification. -> Viz/Presentation Method: Interactive HTML Table. -> Interaction: Add, delete, edit rows. -> Justification: A table is the most effective way to display and manage structured, row-based data, offering a familiar spreadsheet-like experience. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-stone-900">PU灌注生產線設備功率計算工具</h1>
+            <p class="mt-2 text-lg text-stone-600">匯入設備清單，即時計算總耗電功率與建議的斷路器安培數。</p>
+        </header>
+        
+        <div class="link-container">
+          <a href="http://125.229.17.109:8080" target="_blank">GREEN MATH</a>
+        </div>
+
+        <main>
+            <section id="data-input" class="mb-8 p-6 bg-white rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4 text-stone-800">1. 匯入您的設備清單</h2>
+                <div class="flex flex-col md:flex-row gap-4 items-center">
+                    <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls, .csv">
+                    <button id="upload-button" class="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        選擇 Excel/CSV 檔案
+                    </button>
+                    <button id="sample-data-button" class="w-full md:w-auto bg-stone-500 hover:bg-stone-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        使用範例資料
+                    </button>
+                    <a href="#" id="download-template" class="w-full md:w-auto text-center text-amber-600 hover:underline">下載範本</a>
+                </div>
+                <p id="file-name" class="mt-4 text-stone-500"></p>
+            </section>
+
+            <section id="calculator" class="hidden">
+                <div class="mb-6">
+                    <div class="border-b border-stone-200">
+                        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                            <button id="tab-pu" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-amber-600 border-amber-500">PU灌注機</button>
+                            <button id="tab-conveyor" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-stone-500 hover:text-stone-700 hover:border-stone-300">輸送機</button>
+                            <button id="tab-peripheral" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-stone-500 hover:text-stone-700 hover:border-stone-300">周邊設備</button>
+                            <button id="tab-dispensing" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-stone-500 hover:text-stone-700 hover:border-stone-300">自動灌注機</button>
+                            <button id="tab-summary" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-stone-500 hover:text-stone-700 hover:border-stone-300">總覽與匯出</button>
+                        </nav>
+                    </div>
+                </div>
+
+                <div id="results-pu" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總耗電功率 (kW)</h3>
+                        <p id="total-power-pu" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總負載電流 (A)</h3>
+                        <p id="total-current-pu" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">建議斷路器 (A)</h3>
+                        <p id="recommended-breaker-pu" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                        <p class="text-sm text-stone-500 mt-1">已包含 125% 安全裕度</p>
+                        <div id="breaker-check-pu" class="mt-2 font-semibold"></div>
+                    </div>
+                </div>
+
+                <div id="results-conveyor" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                     <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總耗電功率 (kW)</h3>
+                        <p id="total-power-conveyor" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總負載電流 (A)</h3>
+                        <p id="total-current-conveyor" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">建議斷路器 (A)</h3>
+                        <p id="recommended-breaker-conveyor" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                        <p class="text-sm text-stone-500 mt-1">已包含 125% 安全裕度</p>
+                        <div id="breaker-check-conveyor" class="mt-2 font-semibold"></div>
+                    </div>
+                </div>
+
+                <div id="results-peripheral" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                     <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總耗電功率 (kW)</h3>
+                        <p id="total-power-peripheral" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總負載電流 (A)</h3>
+                        <p id="total-current-peripheral" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">建議斷路器 (A)</h3>
+                        <p id="recommended-breaker-peripheral" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                        <p class="text-sm text-stone-500 mt-1">已包含 125% 安全裕度</p>
+                        <div id="breaker-check-peripheral" class="mt-2 font-semibold"></div>
+                    </div>
+                </div>
+
+                <div id="results-dispensing" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                     <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總耗電功率 (kW)</h3>
+                        <p id="total-power-dispensing" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總負載電流 (A)</h3>
+                        <p id="total-current-dispensing" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">建議斷路器 (A)</h3>
+                        <p id="recommended-breaker-dispensing" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                        <p class="text-sm text-stone-500 mt-1">已包含 125% 安全裕度</p>
+                        <div id="breaker-check-dispensing" class="mt-2 font-semibold"></div>
+                    </div>
+                </div>
+
+                <div id="results-summary" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總生產線功率 (kW)</h3>
+                        <p id="total-power-grand" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">總生產線電流 (A)</h3>
+                        <p id="total-current-grand" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-lg font-semibold text-stone-600">整體斷路器建議 (A)</h3>
+                        <p id="recommended-breaker-grand" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+                        <p class="text-sm text-stone-500 mt-1">考慮所有設備的總和 (125% 安全裕度)</p>
+                    </div>
+                </div>
+                
+                <div id="table-pu-container" class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4 md:gap-0">
+                        <h2 class="text-2xl font-semibold text-stone-800 flex items-center gap-2">
+                            PU灌注機設備清單
+                            <label for="existing-breaker-pu" class="text-base font-normal text-stone-600 flex items-center gap-1">
+                                (總開關:
+                                <input type="number" id="existing-breaker-pu" value="160" class="w-20 p-1 border rounded text-center text-stone-700">A)
+                            </label>
+                        </h2>
+                        <button id="add-row-pu" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">新增項目</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="equipment-table-pu" class="min-w-full divide-y divide-stone-200">
+                            <thead class="bg-stone-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">設備類型</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">數量</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">功率</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">單位</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">電壓(V)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">相數</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">功因(PF)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-stone-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="table-conveyor-container" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4 md:gap-0">
+                        <h2 class="text-2xl font-semibold text-stone-800 flex items-center gap-2">
+                            輸送機設備清單
+                            <label for="existing-breaker-conveyor" class="text-base font-normal text-stone-600 flex items-center gap-1">
+                                (總開關:
+                                <input type="number" id="existing-breaker-conveyor" value="250" class="w-20 p-1 border rounded text-center text-stone-700">A)
+                            </label>
+                        </h2>
+                        <button id="add-row-conveyor" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">新增項目</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="equipment-table-conveyor" class="min-w-full divide-y divide-stone-200">
+                            <thead class="bg-stone-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">設備類型</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">數量</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">功率</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">單位</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">電壓(V)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">相數</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">功因(PF)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-stone-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="table-peripheral-container" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4 md:gap-0">
+                        <h2 class="text-2xl font-semibold text-stone-800 flex items-center gap-2">
+                            周邊設備清單
+                            <label for="existing-breaker-peripheral" class="text-base font-normal text-stone-600 flex items-center gap-1">
+                                (總開關:
+                                <input type="number" id="existing-breaker-peripheral" value="100" class="w-20 p-1 border rounded text-center text-stone-700">A)
+                            </label>
+                        </h2>
+                        <button id="add-row-peripheral" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">新增項目</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="equipment-table-peripheral" class="min-w-full divide-y divide-stone-200">
+                            <thead class="bg-stone-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">設備類型</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">數量</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">功率</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">單位</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">電壓(V)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">相數</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">功因(PF)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-stone-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="table-dispensing-container" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4 md:gap-0">
+                        <h2 class="text-2xl font-semibold text-stone-800 flex items-center gap-2">
+                            自動灌注機設備清單
+                            <label for="existing-breaker-dispensing" class="text-base font-normal text-stone-600 flex items-center gap-1">
+                                (總開關:
+                                <input type="number" id="existing-breaker-dispensing" value="80" class="w-20 p-1 border rounded text-center text-stone-700">A)
+                            </label>
+                        </h2>
+                        <button id="add-row-dispensing" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">新增項目</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="equipment-table-dispensing" class="min-w-full divide-y divide-stone-200">
+                            <thead class="bg-stone-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">設備類型</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">數量</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">功率</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">單位</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">電壓(V)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">相數</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">功因(PF)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-stone-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="summary-and-download-container" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-stone-800">生產線數據總覽</h2>
+                    <p class="text-stone-600 mb-4">此表格彙整了所有設備類別的總功率與總電流數據，方便您概覽整體能耗分佈。</p>
+                    <div class="overflow-x-auto mb-6">
+                        <table id="grand-summary-table" class="min-w-full divide-y divide-stone-200">
+                            <thead class="bg-stone-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">設備類別/子項目</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">總耗電功率 (kW)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">總負載電流 (A)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-stone-200">
+                                <!-- Data will be inserted here by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2 class="text-2xl font-semibold mb-4 text-stone-800">下載更新後的數據</h2>
+                    <p class="text-stone-600 mb-4">您可以下載當前調整後的設備清單，作為未來參考或進一步分析。</p>
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <button id="download-excel" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center gap-2">
+                            <span role="img" aria-label="Excel icon">&#x1F5C3;</span> 下載為 Excel (多工作表)
+                        </button>
+                        <button id="download-csv" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center gap-2">
+                            <span role="img" aria-label="CSV icon">&#x1F4C4;</span> 下載為 CSV (合併)
+                        </button>
+                    </div>
+                </div>
+
+                <section id="calculation-process" class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-stone-800">詳細計算過程</h2>
+                    <p class="text-stone-600 mb-4">此處顯示每個設備項目的詳細功率與電流計算步驟，方便您進行驗證。</p>
+                    <div id="calculation-details-pu" class="hidden">
+                        <h3 class="text-xl font-medium text-stone-700 mb-3">PU灌注機計算明細</h3>
+                        <div id="calculation-details-pu-content"></div>
+                    </div>
+                    <div id="calculation-details-conveyor" class="hidden">
+                        <h3 class="text-xl font-medium text-stone-700 mb-3">輸送機計算明細</h3>
+                        <div id="calculation-details-conveyor-content"></div>
+                    </div>
+                    <div id="calculation-details-peripheral" class="hidden">
+                        <h3 class="text-xl font-medium text-stone-700 mb-3">周邊設備計算明細</h3>
+                        <div id="calculation-details-peripheral-content"></div>
+                    </div>
+                    <div id="calculation-details-dispensing" class="hidden">
+                        <h3 class="text-xl font-medium text-stone-700 mb-3">自動灌注機計算明細</h3>
+                        <div id="calculation-details-dispensing-content"></div>
+                    </div>
+                </section>
+
+                <section id="visualization" class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold mb-4 text-stone-800">功率分佈視覺化</h2>
+                    <p class="text-stone-600 mb-4">此圖表顯示當前所選系統中，各設備類型佔總功率的百分比，幫助您快速識別主要的能源消耗來源。</p>
+                    <div class="chart-container">
+                        <canvas id="power-chart"></canvas>
+                    </div>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <div id="error-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold text-red-600 mb-4">檔案格式錯誤</h3>
+            <p id="error-message" class="text-stone-700"></p>
+            <button id="close-modal" class="mt-6 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg w-full">關閉</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('file-input');
+            const uploadButton = document.getElementById('upload-button');
+            const sampleDataButton = document.getElementById('sample-data-button');
+            const fileNameDisplay = document.getElementById('file-name');
+            const calculatorSection = document.getElementById('calculator');
+            const downloadTemplate = document.getElementById('download-template');
+
+            const tabPu = document.getElementById('tab-pu');
+            const tabConveyor = document.getElementById('tab-conveyor');
+            const tabPeripheral = document.getElementById('tab-peripheral');
+            const tabDispensing = document.getElementById('tab-dispensing');
+            const tabSummary = document.getElementById('tab-summary');
+            
+            const tables = {
+                pu: document.getElementById('equipment-table-pu').getElementsByTagName('tbody')[0],
+                conveyor: document.getElementById('equipment-table-conveyor').getElementsByTagName('tbody')[0],
+                peripheral: document.getElementById('equipment-table-peripheral').getElementsByTagName('tbody')[0],
+                dispensing: document.getElementById('equipment-table-dispensing').getElementsByTagName('tbody')[0]
+            };
+
+            const addRowButtons = {
+                pu: document.getElementById('add-row-pu'),
+                conveyor: document.getElementById('add-row-conveyor'),
+                peripheral: document.getElementById('add-row-peripheral'),
+                dispensing: document.getElementById('add-row-dispensing')
+            };
+
+            const totalPowerDisplays = {
+                pu: document.getElementById('total-power-pu'),
+                conveyor: document.getElementById('total-power-conveyor'),
+                peripheral: document.getElementById('total-power-peripheral'),
+                dispensing: document.getElementById('total-power-dispensing')
+            };
+            const totalCurrentDisplays = {
+                pu: document.getElementById('total-current-pu'),
+                conveyor: document.getElementById('total-current-conveyor'),
+                peripheral: document.getElementById('total-current-peripheral'),
+                dispensing: document.getElementById('total-current-dispensing')
+            };
+            const recommendedBreakerDisplays = {
+                pu: document.getElementById('recommended-breaker-pu'),
+                conveyor: document.getElementById('recommended-breaker-conveyor'),
+                peripheral: document.getElementById('recommended-breaker-peripheral'),
+                dispensing: document.getElementById('recommended-breaker-dispensing')
+            };
+            const breakerChecks = {
+                pu: document.getElementById('breaker-check-pu'),
+                conveyor: document.getElementById('breaker-check-conveyor'),
+                peripheral: document.getElementById('breaker-check-peripheral'),
+                dispensing: document.getElementById('breaker-check-dispensing')
+            };
+
+            const existingBreakerInputPu = document.getElementById('existing-breaker-pu');
+            const existingBreakerInputConveyor = document.getElementById('existing-breaker-conveyor');
+            const existingBreakerInputPeripheral = document.getElementById('existing-breaker-peripheral');
+            const existingBreakerInputDispensing = document.getElementById('existing-breaker-dispensing');
+
+            const totalPowerGrand = document.getElementById('total-power-grand');
+            const totalCurrentGrand = document.getElementById('total-current-grand');
+            const recommendedBreakerGrand = document.getElementById('recommended-breaker-grand');
+            const grandSummaryTableTBody = document.getElementById('grand-summary-table').getElementsByTagName('tbody')[0];
+            const downloadExcelButton = document.getElementById('download-excel');
+            const downloadCsvButton = document.getElementById('download-csv');
+
+            let equipmentData = { pu: [], conveyor: [], peripheral: [], dispensing: [] };
+            let activeTab = 'pu';
+            let powerChart;
+
+            let puCalculationSummary = { totalPowerKW: 0, totalCurrent: 0, recommendedBreaker: 0, details: [] };
+            let conveyorCalculationSummary = { totalPowerKW: 0, totalCurrent: 0, recommendedBreaker: 0, details: [] };
+            let peripheralCalculationSummary = { totalPowerKW: 0, totalCurrent: 0, recommendedBreaker: 0, details: [] };
+            let dispensingCalculationSummary = { totalPowerKW: 0, totalCurrent: 0, recommendedBreaker: 0, details: [] };
+            let grandTotalSummary = { totalPowerKW: 0, totalCurrent: 0, recommendedBreaker: 0 };
+
+            const sampleData = {
+                pu: [
+                    { '設備類型': '油壓泵浦', '數量': 1, '功率': 15, '單位': 'HP', '電壓(V)': 380, '相數': '三相', '功因(PF)': 0.85 },
+                    { '設備類型': '變頻器料泵', '數量': 3, '功率': 7.5, '單位': 'kW', '電壓(V)': 380, '相數': '三相', '功因(PF)': 0.9 },
+                    { '設備類型': '攪拌機', '數量': 3, '功率': 2.2, '單位': 'kW', '電壓(V)': 380, '相數': '三相', '功因(PF)': 0.8 },
+                    { '設備類型': '加熱棒', '數量': 3, '功率': 5000, '單位': 'W', '電壓(V)': 220, '相數': '單相', '功因(PF)': 1 },
+                ],
+                conveyor: [
+                    { '設備類型': '變頻器馬達', '數量': 1, '功率': 20, '單位': 'HP', '電壓(V)': 380, '相數': '三相', '功因(PF)': 0.9 },
+                    { '設備類型': '烘箱', '數量': 5, '功率': 30, '單位': 'kW', '電壓(V)': 380, '相數': '三相', '功因(PF)': 1 },
+                    { '設備類型': '循環風扇', '數量': 5, '功率': 1.5, '單位': 'kW', '電壓(V)': 380, '相數': '三相', '功因(PF)': 0.85 },
+                ],
+                peripheral: [
+                    { '設備類型': '冰水機壓縮機', '數量': 1, '功率': 38.5, '單位': 'A', '電壓(V)': 380, '相數': '三相', '功因(PF)': 0.8 },
+                    { '設備類型': '模溫機', '數量': 2, '功率': 10, '單位': 'kW', '電壓(V)': 380, '相數': '三相', '功因(PF)': 0.95 },
+                    { '設備類型': '破泡機', '數量': 1, '功率': 3, '單位': 'kW', '電壓(V)': 220, '相數': '單相', '功因(PF)': 0.8 },
+                ],
+                dispensing: [
+                    { '設備類型': '機械手臂', '數量': 1, '功率': 5, '單位': 'kW', '電壓(V)': 220, '相數': '三相', '功因(PF)': 0.85 },
+                    { '設備類型': 'XYZ Table', '數量': 1, '功率': 1.5, '單位': 'kW', '電壓(V)': 220, '相數': '單相', '功因(PF)': 0.75 },
+                    { '設備類型': '點膠閥控制器', '數量': 1, '功率': 200, '單位': 'W', '電壓(V)': 110, '相數': '單相', '功因(PF)': 0.9 },
+                ]
+            };
+
+            const requiredHeaders = ['設備類型', '數量', '功率', '單位', '電壓(V)', '相數', '功因(PF)'];
+
+            uploadButton.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFile);
+            sampleDataButton.addEventListener('click', loadSampleData);
+            downloadTemplate.addEventListener('click', downloadTemplateFile);
+
+            existingBreakerInputPu.addEventListener('input', calculateAll);
+            existingBreakerInputConveyor.addEventListener('input', calculateAll);
+            existingBreakerInputPeripheral.addEventListener('input', calculateAll);
+            existingBreakerInputDispensing.addEventListener('input', calculateAll);
+
+            tabPu.addEventListener('click', () => switchTab('pu'));
+            tabConveyor.addEventListener('click', () => switchTab('conveyor'));
+            tabPeripheral.addEventListener('click', () => switchTab('peripheral'));
+            tabDispensing.addEventListener('click', () => switchTab('dispensing'));
+            tabSummary.addEventListener('click', () => switchTab('summary'));
+
+            downloadExcelButton.addEventListener('click', exportToExcel);
+            downloadCsvButton.addEventListener('click', exportToCSV);
+
+
+            function handleFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                fileNameDisplay.textContent = `已選擇檔案: ${file.name}`;
+                const reader = new FileReader();
+
+                if (file.name.endsWith('.csv')) {
+                    reader.onload = (e) => {
+                        Papa.parse(e.target.result, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: (results) => {
+                                equipmentData.pu = results.data.map(normalizeRow);
+                                equipmentData.conveyor = []; 
+                                equipmentData.peripheral = [];
+                                equipmentData.dispensing = []; 
+                                calculatorSection.classList.remove('hidden');
+                                renderAll();
+                            },
+                            error: (err) => showErrorModal(`CSV 解析錯誤: ${err.message}`)
+                        });
+                    };
+                    reader.readAsText(file);
+                } else {
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            
+                            const puSheetName = workbook.SheetNames.find(name => name.includes('PU灌注機')) || null;
+                            const conveyorSheetName = workbook.SheetNames.find(name => name.includes('輸送機')) || null;
+                            const peripheralSheetName = workbook.SheetNames.find(name => name.includes('周邊設備')) || null;
+                            const dispensingSheetName = workbook.SheetNames.find(name => name.includes('自動灌注機')) || null;
+
+                            const puData = puSheetName ? XLSX.utils.sheet_to_json(workbook.Sheets[puSheetName]) : [];
+                            const conveyorData = conveyorSheetName ? XLSX.utils.sheet_to_json(workbook.Sheets[conveyorSheetName]) : [];
+                            const peripheralData = peripheralSheetName ? XLSX.utils.sheet_to_json(workbook.Sheets[peripheralSheetName]) : [];
+                            const dispensingData = dispensingSheetName ? XLSX.utils.sheet_to_json(workbook.Sheets[dispensingSheetName]) : [];
+
+                            processData(puData, conveyorData, peripheralData, dispensingData);
+
+                        } catch (err) {
+                            showErrorModal(`Excel 解析錯誤: ${err.message}. 請確認檔案格式是否正確。`);
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+                fileInput.value = '';
+            }
+            
+            function processData(puData, conveyorData, peripheralData, dispensingData) {
+                const validate = (data) => {
+                    // Empty data is valid, means no equipment in that category
+                    if (!data || data.length === 0) return true; 
+                    const headers = Object.keys(data[0]);
+                    return requiredHeaders.every(h => headers.includes(h));
+                };
+
+                // Check validation for all potential datasets
+                if (!(validate(puData) && validate(conveyorData) && validate(peripheralData) && validate(dispensingData))) {
+                     showErrorModal(`檔案缺少必要的欄位。請確認您的檔案包含以下所有欄位: ${requiredHeaders.join(', ')}`);
+                     return;
+                }
+
+                equipmentData.pu = puData.map(normalizeRow);
+                equipmentData.conveyor = conveyorData.map(normalizeRow);
+                equipmentData.peripheral = peripheralData.map(normalizeRow);
+                equipmentData.dispensing = dispensingData.map(normalizeRow);
+                
+                calculatorSection.classList.remove('hidden');
+                renderAll();
+            }
+
+            function normalizeRow(row) {
+                return {
+                    '設備類型': row['設備類型'] || '未知',
+                    '數量': parseFloat(row['數量']) || 1,
+                    '功率': parseFloat(row['功率']) || 0,
+                    '單位': row['單位'] || 'kW',
+                    '電壓(V)': parseFloat(row['電壓(V)']) || 380,
+                    '相數': row['相數'] || '三相',
+                    '功因(PF)': parseFloat(row['功因(PF)']) || 0.85
+                };
+            }
+
+            function loadSampleData() {
+                equipmentData.pu = sampleData.pu.map(normalizeRow);
+                equipmentData.conveyor = sampleData.conveyor.map(normalizeRow);
+                equipmentData.peripheral = sampleData.peripheral.map(normalizeRow);
+                equipmentData.dispensing = sampleData.dispensing.map(normalizeRow);
+                calculatorSection.classList.remove('hidden');
+                fileNameDisplay.textContent = '正在使用範例資料';
+                renderAll();
+            }
+
+            function downloadTemplateFile(e) {
+                e.preventDefault();
+                const pu_ws = XLSX.utils.json_to_sheet(sampleData.pu);
+                const conveyor_ws = XLSX.utils.json_to_sheet(sampleData.conveyor);
+                const peripheral_ws = XLSX.utils.json_to_sheet(sampleData.peripheral);
+                const dispensing_ws = XLSX.utils.json_to_sheet(sampleData.dispensing);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, pu_ws, "PU灌注機");
+                XLSX.utils.book_append_sheet(wb, conveyor_ws, "輸送機");
+                XLSX.utils.book_append_sheet(wb, peripheral_ws, "周邊設備");
+                XLSX.utils.book_append_sheet(wb, dispensing_ws, "自動灌注機");
+                XLSX.writeFile(wb, "設備功率計算範本.xlsx");
+            }
+
+            function renderAll() {
+                renderTable('pu');
+                renderTable('conveyor');
+                renderTable('peripheral');
+                renderTable('dispensing');
+                calculateAll();
+            }
+
+            function renderTable(type) {
+                const tableBody = tables[type];
+                tableBody.innerHTML = '';
+                equipmentData[type].forEach((item, index) => {
+                    const row = tableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap"><input type="text" value="${item['設備類型']}" class="w-20 p-1 border rounded" data-index="${index}" data-key="設備類型" data-type="${type}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><input type="number" value="${item['數量']}" class="w-10 p-1 border rounded" data-index="${index}" data-key="數量" data-type="${type}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><input type="number" value="${item['功率']}" class="w-16 p-1 border rounded" data-index="${index}" data-key="功率" data-type="${type}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <select class="w-14 p-1 border rounded" data-index="${index}" data-key="單位" data-type="${type}">
+                                <option value="W" ${item['單位'] === 'W' ? 'selected' : ''}>W</option>
+                                <option value="kW" ${item['單位'] === 'kW' ? 'selected' : ''}>kW</option>
+                                <option value="HP" ${item['單位'] === 'HP' ? 'selected' : ''}>HP</option>
+                                <option value="A" ${item['單位'] === 'A' ? 'selected' : ''}>A</option>
+                            </select>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap"><input type="number" value="${item['電壓(V)']}" class="w-14 p-1 border rounded" data-index="${index}" data-key="電壓(V)" data-type="${type}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <select class="w-16 p-1 border rounded" data-index="${index}" data-key="相數" data-type="${type}">
+                                <option value="單相" ${item['相數'] === '單相' ? 'selected' : ''}>單相</option>
+                                <option value="三相" ${item['相數'] === '三相' ? 'selected' : ''}>三相</option>
+                            </select>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap"><input type="number" step="0.01" value="${item['功因(PF)']}" class="w-16 p-1 border rounded" data-index="${index}" data-key="功因(PF)" data-type="${type}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><button class="text-red-500 hover:text-red-700 delete-row" data-index="${index}" data-type="${type}">刪除</button></td>
+                    `;
+                });
+            }
+
+            function calculateForType(type) {
+                let currentTotalPower = 0; // in Watts
+                let currentTotalCurrent = 0; // in Amperes
+                let currentDetails = [];
+
+                // Ensure equipmentData[type] is an array before calling forEach
+                if (!Array.isArray(equipmentData[type])) {
+                    equipmentData[type] = []; // Initialize as empty array if undefined
+                }
+
+                equipmentData[type].forEach(item => {
+                    const quantity = parseFloat(item['數量']) || 0;
+                    let powerOrCurrentInput = parseFloat(item['功率']) || 0;
+                    const unit = item['單位'] || 'W';
+                    const voltage = parseFloat(item['電壓(V)']) || 0;
+                    const pf = parseFloat(item['功因(PF)']) || 0;
+                    const phase = item['相數'] || '三相';
+
+                    let powerW_per_single_unit = 0;
+                    let current_per_single_unit = 0;
+                    let powerCalculationText = "";
+                    let currentCalculationText = "";
+
+                    if (unit === 'A') {
+                        current_per_single_unit = powerOrCurrentInput; 
+                        currentCalculationText = `${current_per_single_unit} A (直接輸入)`;
+
+                        if (voltage > 0 && pf > 0) {
+                            if (phase === '三相') {
+                                powerW_per_single_unit = current_per_single_unit * voltage * pf * Math.sqrt(3);
+                                powerCalculationText = `${current_per_single_unit}A * ${voltage}V * ${pf.toFixed(2)}PF * √3 = ${powerW_per_single_unit.toFixed(2)} W`;
+                            } else {
+                                powerW_per_single_unit = current_per_single_unit * voltage * pf;
+                                powerCalculationText = `${current_per_single_unit}A * ${voltage}V * ${pf.toFixed(2)}PF = ${powerW_per_single_unit.toFixed(2)} W`;
+                            }
+                        } else {
+                            powerW_per_single_unit = 0; 
+                            powerCalculationText = "無法計算功率 (電壓或功因不足)";
+                        }
+                    } else {
+                        powerW_per_single_unit = powerOrCurrentInput;
+                        if (unit === 'kW') {
+                            powerW_per_single_unit *= 1000;
+                            powerCalculationText = `${powerOrCurrentInput} kW (轉換: ${powerOrCurrentInput} kW * 1000 W/kW)`;
+                        } else if (unit === 'HP') {
+                            powerW_per_single_unit *= 746;
+                            powerCalculationText = `${powerOrCurrentInput} HP (轉換: ${powerOrCurrentInput} HP * 746 W/HP)`;
+                        } else { // unit is W
+                            powerCalculationText = `${powerOrCurrentInput} W (直接輸入)`;
+                        }
+
+                        if (voltage > 0 && pf > 0) {
+                            if (phase === '三相') {
+                                current_per_single_unit = powerW_per_single_unit / (Math.sqrt(3) * voltage * pf);
+                                currentCalculationText = `${powerW_per_single_unit.toFixed(2)}W / (√3 * ${voltage}V * ${pf.toFixed(2)}PF) = ${current_per_single_unit.toFixed(2)} A`;
+                            } else {
+                                current_per_single_unit = powerW_per_single_unit / (voltage * pf);
+                                currentCalculationText = `${powerW_per_single_unit.toFixed(2)}W / (${voltage}V * ${pf.toFixed(2)}PF) = ${current_per_single_unit.toFixed(2)} A`;
+                            }
+                        } else {
+                            current_per_single_unit = 0; 
+                            currentCalculationText = "無法計算電流 (電壓或功因不足)";
+                        }
+                    }
+
+                    const totalItemPowerW = powerW_per_single_unit * quantity;
+                    const totalItemCurrent = current_per_single_unit * quantity;
+
+                    currentTotalPower += totalItemPowerW;
+                    currentTotalCurrent += totalItemCurrent;
+
+                    currentDetails.push({
+                        equipmentType: item['設備類型'],
+                        quantity: quantity,
+                        originalInput: powerOrCurrentInput,
+                        unit: unit,
+                        powerW_per_single_unit: powerW_per_single_unit,
+                        current_per_single_unit: current_per_single_unit,
+                        totalItemPowerW: totalItemPowerW,
+                        totalItemCurrent: totalItemCurrent,
+                        voltage: voltage,
+                        phase: item['相數'],
+                        pf: pf,
+                        powerCalculationText: powerCalculationText,
+                        currentCalculationText: currentCalculationText
+                    });
+                });
+
+                const finalTotalPowerKW = currentTotalPower / 1000;
+                const finalRecommendedBreaker = currentTotalCurrent * 1.25;
+
+                return {
+                    totalPowerKW: finalTotalPowerKW,
+                    totalCurrent: currentTotalCurrent,
+                    recommendedBreaker: finalRecommendedBreaker,
+                    details: currentDetails
+                };
+            }
+
+            function calculateAll() {
+                puCalculationSummary = calculateForType('pu');
+                conveyorCalculationSummary = calculateForType('conveyor');
+                peripheralCalculationSummary = calculateForType('peripheral'); 
+                dispensingCalculationSummary = calculateForType('dispensing'); 
+
+                totalPowerDisplays.pu.textContent = puCalculationSummary.totalPowerKW.toFixed(2);
+                totalCurrentDisplays.pu.textContent = puCalculationSummary.totalCurrent.toFixed(2);
+                recommendedBreakerDisplays.pu.textContent = puCalculationSummary.recommendedBreaker.toFixed(2);
+                const existingBreakerPu = parseFloat(existingBreakerInputPu.value);
+                if (puCalculationSummary.recommendedBreaker > existingBreakerPu) {
+                    breakerChecks.pu.textContent = `警告: 容量不足 (現有 ${existingBreakerPu}A)`;
+                    breakerChecks.pu.className = 'mt-2 font-semibold text-red-600';
+                } else {
+                    breakerChecks.pu.textContent = `安全: 容量足夠 (現有 ${existingBreakerPu}A)`;
+                    breakerChecks.pu.className = 'mt-2 font-semibold text-green-600';
+                }
+
+                totalPowerDisplays.conveyor.textContent = conveyorCalculationSummary.totalPowerKW.toFixed(2);
+                totalCurrentDisplays.conveyor.textContent = conveyorCalculationSummary.totalCurrent.toFixed(2);
+                recommendedBreakerDisplays.conveyor.textContent = conveyorCalculationSummary.recommendedBreaker.toFixed(2);
+                const existingBreakerConveyor = parseFloat(existingBreakerInputConveyor.value);
+                if (conveyorCalculationSummary.recommendedBreaker > existingBreakerConveyor) {
+                    breakerChecks.conveyor.textContent = `警告: 容量不足 (現有 ${existingBreakerConveyor}A)`;
+                    breakerChecks.conveyor.className = 'mt-2 font-semibold text-red-600';
+                } else {
+                    breakerChecks.conveyor.textContent = `安全: 容量足夠 (現有 ${existingBreakerConveyor}A)`;
+                    breakerChecks.conveyor.className = 'mt-2 font-semibold text-green-600';
+                }
+
+                totalPowerDisplays.peripheral.textContent = peripheralCalculationSummary.totalPowerKW.toFixed(2);
+                totalCurrentDisplays.peripheral.textContent = peripheralCalculationSummary.totalCurrent.toFixed(2);
+                recommendedBreakerDisplays.peripheral.textContent = peripheralCalculationSummary.recommendedBreaker.toFixed(2);
+                const existingBreakerPeripheral = parseFloat(existingBreakerInputPeripheral.value);
+                if (peripheralCalculationSummary.recommendedBreaker > existingBreakerPeripheral) {
+                    breakerChecks.peripheral.textContent = `警告: 容量不足 (現有 ${existingBreakerPeripheral}A)`;
+                    breakerChecks.peripheral.className = 'mt-2 font-semibold text-red-600';
+                } else {
+                    breakerChecks.peripheral.textContent = `安全: 容量足夠 (現有 ${existingBreakerPeripheral}A)`;
+                    breakerChecks.peripheral.className = 'mt-2 font-semibold text-green-600';
+                }
+
+                totalPowerDisplays.dispensing.textContent = dispensingCalculationSummary.totalPowerKW.toFixed(2);
+                totalCurrentDisplays.dispensing.textContent = dispensingCalculationSummary.totalCurrent.toFixed(2);
+                recommendedBreakerDisplays.dispensing.textContent = dispensingCalculationSummary.recommendedBreaker.toFixed(2);
+                const existingBreakerDispensing = parseFloat(existingBreakerInputDispensing.value);
+                if (dispensingCalculationSummary.recommendedBreaker > existingBreakerDispensing) {
+                    breakerChecks.dispensing.textContent = `警告: 容量不足 (現有 ${existingBreakerDispensing}A)`;
+                    breakerChecks.dispensing.className = 'mt-2 font-semibold text-red-600';
+                } else {
+                    breakerChecks.dispensing.textContent = `安全: 容量足夠 (現有 ${existingBreakerDispensing}A)`;
+                    breakerChecks.dispensing.className = 'mt-2 font-semibold text-green-600';
+                }
+
+                calculateGrandTotals();
+                updateChart();
+                renderCalculationDetails();
+                renderGrandSummaryTable();
+            }
+
+            function calculateGrandTotals() {
+                let grandPower = 0; // in kW
+                let grandCurrent = 0; // in A
+
+                grandPower += puCalculationSummary.totalPowerKW;
+                grandCurrent += puCalculationSummary.totalCurrent;
+
+                grandPower += conveyorCalculationSummary.totalPowerKW;
+                grandCurrent += conveyorCalculationSummary.totalCurrent;
+
+                grandPower += peripheralCalculationSummary.totalPowerKW;
+                grandCurrent += peripheralCalculationSummary.totalCurrent;
+
+                grandPower += dispensingCalculationSummary.totalPowerKW;
+                grandCurrent += dispensingCalculationSummary.totalCurrent;
+
+                grandTotalSummary.totalPowerKW = grandPower;
+                grandTotalSummary.totalCurrent = grandCurrent;
+                grandTotalSummary.recommendedBreaker = grandCurrent * 1.25;
+
+                totalPowerGrand.textContent = grandTotalSummary.totalPowerKW.toFixed(2);
+                totalCurrentGrand.textContent = grandTotalSummary.totalCurrent.toFixed(2);
+                recommendedBreakerGrand.textContent = grandTotalSummary.recommendedBreaker.toFixed(2);
+            }
+
+            function renderGrandSummaryTable() {
+                grandSummaryTableTBody.innerHTML = '';
+
+                const categoriesToDisplay = [
+                    { type: 'pu', name: 'PU灌注機', summary: puCalculationSummary, showDetails: false },
+                    { type: 'conveyor', name: '輸送機', summary: conveyorCalculationSummary, showDetails: false },
+                    { type: 'peripheral', name: '周邊設備', summary: peripheralCalculationSummary, showDetails: true }, // Show details for Peripheral
+                    { type: 'dispensing', name: '自動灌注機', summary: dispensingCalculationSummary, showDetails: true }  // Show details for Dispensing
+                ];
+
+                categoriesToDisplay.forEach(cat => {
+                    // Only display category row if it has power or items, OR if it's one of the types where details are requested.
+                    if (cat.summary.totalPowerKW > 0 || (equipmentData[cat.type] && equipmentData[cat.type].length > 0)) {
+                        const row = grandSummaryTableTBody.insertRow();
+                        row.className = 'bg-stone-50'; // Slightly different background for category totals
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-stone-900">${cat.name} 總計</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-stone-600">${cat.summary.totalPowerKW.toFixed(2)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-stone-600">${cat.summary.totalCurrent.toFixed(2)}</td>
+                        `;
+
+                        // If showDetails is true, and there are actual details, display sub-items
+                        if (cat.showDetails && cat.summary.details.length > 0) {
+                            cat.summary.details.forEach(detail => {
+                                const subRow = grandSummaryTableTBody.insertRow();
+                                // Add a class for styling sub-items (e.g., indent)
+                                subRow.className = 'text-sm text-stone-700';
+                                subRow.innerHTML = `
+                                    <td class="px-6 py-2 whitespace-nowrap pl-10">${detail.equipmentType}</td>
+                                    <td class="px-6 py-2 whitespace-nowrap">${(detail.totalItemPowerW / 1000).toFixed(2)}</td>
+                                    <td class="px-6 py-2 whitespace-nowrap">${detail.totalItemCurrent.toFixed(2)}</td>
+                                `;
+                            });
+                        }
+                    }
+                });
+
+                const totalRow = grandSummaryTableTBody.insertRow();
+                totalRow.className = 'bg-stone-100 font-bold';
+                totalRow.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-base text-stone-900">總生產線總計</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-base text-amber-700">${grandTotalSummary.totalPowerKW.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-base text-amber-700">${grandTotalSummary.totalCurrent.toFixed(2)}</td>
+                `;
+            }
+
+            function renderCalculationDetails() {
+                const detailsContainerPu = document.getElementById('calculation-details-pu-content');
+                const detailsContainerConveyor = document.getElementById('calculation-details-conveyor-content');
+                const detailsContainerPeripheral = document.getElementById('calculation-details-peripheral-content');
+                const detailsContainerDispensing = document.getElementById('calculation-details-dispensing-content');
+
+                detailsContainerPu.innerHTML = '';
+                detailsContainerConveyor.innerHTML = '';
+                detailsContainerPeripheral.innerHTML = '';
+                detailsContainerDispensing.innerHTML = '';
+
+                const currentSummary = activeTab === 'pu' ? puCalculationSummary : 
+                                       (activeTab === 'conveyor' ? conveyorCalculationSummary : 
+                                       (activeTab === 'peripheral' ? peripheralCalculationSummary : dispensingCalculationSummary));
+                const targetContainer = activeTab === 'pu' ? detailsContainerPu : 
+                                        (activeTab === 'conveyor' ? detailsContainerConveyor : 
+                                        (activeTab === 'peripheral' ? detailsContainerPeripheral : detailsContainerDispensing));
+
+                document.getElementById('calculation-details-pu').classList.toggle('hidden', activeTab !== 'pu');
+                document.getElementById('calculation-details-conveyor').classList.toggle('hidden', activeTab !== 'conveyor');
+                document.getElementById('calculation-details-peripheral').classList.toggle('hidden', activeTab !== 'peripheral');
+                document.getElementById('calculation-details-dispensing').classList.toggle('hidden', activeTab !== 'dispensing');
+
+                // Hide the main calculation process section when on the summary tab
+                document.getElementById('calculation-process').classList.toggle('hidden', activeTab === 'summary');
+
+
+                if (currentSummary.details.length === 0) {
+                    targetContainer.innerHTML = '<p class="text-stone-500">沒有設備項目可顯示詳細計算過程。</p>';
+                    return;
+                }
+
+                currentSummary.details.forEach(detail => {
+                    targetContainer.innerHTML += `
+                        <div class="border-b border-stone-100 py-3 mb-3 last:border-b-0">
+                            <h4 class="font-semibold text-stone-700">${detail.equipmentType} (數量: ${detail.quantity})</h4>
+                            <ul class="list-disc list-inside text-sm text-stone-600 pl-4">
+                                <li>原始輸入: ${detail.originalInput} ${detail.unit}</li>
+                                <li>電壓: ${detail.voltage} V, 相數: ${detail.phase}, 功率因數 (PF): ${detail.pf.toFixed(2)}</li>
+                                <li>單台設備功率: ${detail.powerCalculationText}</li>
+                                <li>單台設備電流: ${detail.currentCalculationText}</li>
+                                <li>總項目功率: ${(detail.totalItemPowerW / 1000).toFixed(2)} kW (${detail.totalItemPowerW.toFixed(2)} W)</li>
+                                <li>總項目電流: ${detail.totalItemCurrent.toFixed(2)} A</li>
+                            </ul>
+                        </div>
+                    `;
+                });
+            }
+
+            function updateChart() {
+                let labels = [];
+                let values = [];
+                let titleText = '';
+
+                if (activeTab === 'summary') {
+                    // For summary tab, show overall power distribution by category
+                    labels = ['PU灌注機', '輸送機', '周邊設備', '自動灌注機'];
+                    values = [
+                        puCalculationSummary.totalPowerKW,
+                        conveyorCalculationSummary.totalPowerKW,
+                        peripheralCalculationSummary.totalPowerKW,
+                        dispensingCalculationSummary.totalPowerKW
+                    ];
+                    titleText = '總生產線功率分佈 (各類別合計)';
+                } else {
+                    // For individual tabs, show power distribution within that category
+                    const data = equipmentData[activeTab];
+                     // Ensure data is an array before calling reduce
+                    if (!Array.isArray(data)) {
+                        labels = [];
+                        values = [];
+                    } else {
+                        const powerByType = data.reduce((acc, item) => {
+                            const quantity = parseFloat(item['數量']) || 0;
+                            let powerOrCurrentInput = parseFloat(item['功率']) || 0;
+                            const unit = item['單位'] || 'W';
+                            const voltage = parseFloat(item['電壓(V)']) || 0;
+                            const pf = parseFloat(item['功因(PF)']) || 0;
+                            const phase = item['相數'] || '三相';
+
+                            let powerW_per_single_unit = 0;
+
+                            if (unit === 'A') {
+                                const current_per_single_unit = powerOrCurrentInput;
+                                if (voltage > 0 && pf > 0) {
+                                    if (phase === '三相') {
+                                        powerW_per_single_unit = current_per_single_unit * voltage * pf * Math.sqrt(3);
+                                    } else {
+                                        powerW_per_single_unit = current_per_single_unit * voltage * pf;
+                                    }
+                                }
+                            } else {
+                                powerW_per_single_unit = powerOrCurrentInput;
+                                if (unit === 'kW') {
+                                    powerW_per_single_unit *= 1000;
+                                } else if (unit === 'HP') {
+                                    powerW_per_single_unit *= 746;
+                                }
+                            }
+                            
+                            acc[item['設備類型']] = (acc[item['設備類型']] || 0) + (powerW_per_single_unit * quantity);
+                            return acc;
+                        }, {});
+
+                        labels = Object.keys(powerByType);
+                        values = Object.values(powerByType).map(v => v / 1000);
+                    }
+                    titleText = `${activeTab === 'pu' ? 'PU灌注機' : (activeTab === 'conveyor' ? '輸送機' : (activeTab === 'peripheral' ? '周邊設備' : '自動灌注機'))} 功率分佈`;
+                }
+
+
+                const chartData = {
+                    labels: labels,
+                    datasets: [{
+                        label: '功率 (kW)',
+                        data: values,
+                        backgroundColor: [
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(120, 113, 108, 0.8)',
+                            'rgba(234, 179, 8, 0.8)',
+                            'rgba(168, 162, 158, 0.8)',
+                            'rgba(212, 161, 49, 0.8)',
+                            'rgba(87, 83, 78, 0.8)',
+                            'rgba(251, 191, 36, 0.8)',
+                            'rgba(182, 175, 170, 0.8)',
+                            'rgba(253, 224, 71, 0.8)',
+                            'rgba(107, 114, 128, 0.8)'
+                        ],
+                        borderColor: 'rgba(255, 255, 255, 0.7)',
+                        borderWidth: 1
+                    }]
+                };
+
+                if (powerChart) {
+                    powerChart.data = chartData;
+                    powerChart.options.plugins.title.text = titleText;
+                    powerChart.update();
+                } else {
+                    const ctx = document.getElementById('power-chart').getContext('2d');
+                    powerChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                title: {
+                                    display: true,
+                                    text: titleText,
+                                    font: { size: 16 }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.label || ''; 
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed !== null) {
+                                                label += context.parsed.toFixed(2) + ' kW';
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    });
+                }
+            }
+
+            function handleTableUpdate(e) {
+                const target = e.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+                    const { index, key, type } = target.dataset;
+                    const value = target.type === 'number' ? parseFloat(target.value) : target.value;
+                    equipmentData[type][index][key] = value;
+                    calculateAll();
+                } else if (target.classList.contains('delete-row')) {
+                    const { index, type } = target.dataset;
+                    equipmentData[type].splice(index, 1);
+                    renderTable(type);
+                    calculateAll();
+                }
+            }
+
+            tables.pu.addEventListener('input', handleTableUpdate);
+            tables.pu.addEventListener('click', handleTableUpdate);
+            tables.conveyor.addEventListener('input', handleTableUpdate);
+            tables.conveyor.addEventListener('click', handleTableUpdate);
+            tables.peripheral.addEventListener('input', handleTableUpdate); 
+            tables.peripheral.addEventListener('click', handleTableUpdate); 
+            tables.dispensing.addEventListener('input', handleTableUpdate);
+            tables.dispensing.addEventListener('click', handleTableUpdate);
+            
+            addRowButtons.pu.addEventListener('click', () => addRow('pu'));
+            addRowButtons.conveyor.addEventListener('click', () => addRow('conveyor'));
+            addRowButtons.peripheral.addEventListener('click', () => addRow('peripheral')); 
+            addRowButtons.dispensing.addEventListener('click', () => addRow('dispensing'));
+
+            function addRow(type) {
+                equipmentData[type].push({
+                    '設備類型': '新設備', '數量': 1, '功率': 1, '單位': 'kW', '電壓(V)': 380, '相數': '三相', '功因(PF)': 0.85
+                });
+                renderTable(type);
+                calculateAll();
+            }
+
+            function switchTab(targetTab) {
+                activeTab = targetTab;
+                document.querySelectorAll('nav button').forEach(button => {
+                    button.className = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-stone-500 hover:text-stone-700 hover:border-stone-300';
+                });
+                document.getElementById(`tab-${targetTab}`).className = 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg text-amber-600 border-amber-500';
+
+                document.getElementById('results-pu').classList.add('hidden');
+                document.getElementById('results-conveyor').classList.add('hidden');
+                document.getElementById('results-peripheral').classList.add('hidden');
+                document.getElementById('results-dispensing').classList.add('hidden');
+                document.getElementById('results-summary').classList.add('hidden');
+
+                document.getElementById('table-pu-container').classList.add('hidden');
+                document.getElementById('table-conveyor-container').classList.add('hidden');
+                document.getElementById('table-peripheral-container').classList.add('hidden');
+                document.getElementById('table-dispensing-container').classList.add('hidden');
+                document.getElementById('summary-and-download-container').classList.add('hidden');
+
+                // Hide all calculation details regardless of specific tab
+                document.getElementById('calculation-details-pu').classList.add('hidden');
+                document.getElementById('calculation-details-conveyor').classList.add('hidden');
+                document.getElementById('calculation-details-peripheral').classList.add('hidden');
+                document.getElementById('calculation-details-dispensing').classList.add('hidden');
+
+                if (targetTab === 'summary') {
+                    document.getElementById('results-summary').classList.remove('hidden');
+                    document.getElementById('summary-and-download-container').classList.remove('hidden');
+                    document.getElementById('calculation-process').classList.add('hidden'); // Hide the entire calculation process section
+                } else {
+                    document.getElementById(`results-${targetTab}`).classList.remove('hidden');
+                    document.getElementById(`table-${targetTab}-container`).classList.remove('hidden');
+                    document.getElementById(`calculation-details-${targetTab}`).classList.remove('hidden');
+                    document.getElementById('calculation-process').classList.remove('hidden'); // Show the entire calculation process section
+                }
+                
+                updateChart();
+                renderGrandSummaryTable();
+            }
+
+            function exportToExcel() {
+                const wb = XLSX.utils.book_new();
+                const categories = ['pu', 'conveyor', 'peripheral', 'dispensing'];
+                const categoryNames = {
+                    pu: 'PU灌注機',
+                    conveyor: '輸送機',
+                    peripheral: '周邊設備',
+                    dispensing: '自動灌注機'
+                };
+
+                // === 1. 各分類分頁 (維持原本邏輯，匯出原始清單) ===
+                categories.forEach(catType => {
+                    if (equipmentData[catType] && equipmentData[catType].length > 0) {
+                        const ws = XLSX.utils.json_to_sheet(equipmentData[catType]);
+                        XLSX.utils.book_append_sheet(wb, ws, categoryNames[catType]);
+                    }
+                });
+
+                // === 2. 總結報告分頁 ===
+                let summaryData = [];
+
+                // PU灌注機
+                const puSummary = calculateForType('pu');
+                if (equipmentData.pu.length > 0 && puSummary.totalPowerKW > 0) {
+                    summaryData.push({
+                        '設備類別': 'PU灌注機 總計',
+                        '總功率(kW)': puSummary.totalPowerKW.toFixed(2),
+                        '總電流(A)': puSummary.totalCurrent.toFixed(2)
+                    });
+                }
+
+                // 輸送機
+                const conveyorSummary = calculateForType('conveyor');
+                if (equipmentData.conveyor.length > 0 && conveyorSummary.totalPowerKW > 0) {
+                    summaryData.push({
+                        '設備類別': '輸送機 總計',
+                        '總功率(kW)': conveyorSummary.totalPowerKW.toFixed(2),
+                        '總電流(A)': conveyorSummary.totalCurrent.toFixed(2)
+                    });
+                }
+
+                // 周邊設備 (需要展開子項)
+                const peripheralSummary = calculateForType('peripheral');
+                if (equipmentData.peripheral.length > 0 && peripheralSummary.totalPowerKW > 0) {
+                    summaryData.push({
+                        '設備類別': '周邊設備 總計',
+                        '總功率(kW)': peripheralSummary.totalPowerKW.toFixed(2),
+                        '總電流(A)': peripheralSummary.totalCurrent.toFixed(2)
+                    });
+                }
+
+                // 展開周邊設備子項
+                peripheralSummary.details.forEach(detail => {
+                    summaryData.push({
+                        '設備類別': '　↳ ' + detail.equipmentType,
+                        '總功率(kW)': (detail.totalItemPowerW / 1000).toFixed(2),
+                        '總電流(A)': detail.totalItemCurrent.toFixed(2)
+                    });
+                });
+
+                // 自動灌注機
+                const dispensingSummary = calculateForType('dispensing');
+                if (equipmentData.dispensing.length > 0 && dispensingSummary.totalPowerKW > 0) {
+                    summaryData.push({
+                        '設備類別': '自動灌注機 總計',
+                        '總功率(kW)': dispensingSummary.totalPowerKW.toFixed(2),
+                        '總電流(A)': dispensingSummary.totalCurrent.toFixed(2)
+                    });
+                }
+
+                // 生產線總計
+                const grandPower = puSummary.totalPowerKW + conveyorSummary.totalPowerKW + peripheralSummary.totalPowerKW + dispensingSummary.totalPowerKW;
+                const grandCurrent = puSummary.totalCurrent + conveyorSummary.totalCurrent + peripheralSummary.totalCurrent + dispensingSummary.totalCurrent;
+                summaryData.push({
+                    '設備類別': '總生產線總計',
+                    '總功率(kW)': grandPower.toFixed(2),
+                    '總電流(A)': grandCurrent.toFixed(2)
+                });
+
+                // 建立 Summary 分頁
+                const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+                XLSX.utils.book_append_sheet(wb, summarySheet, "總結報告");
+
+                // === 3. 匯出 Excel ===
+                XLSX.writeFile(wb, "生產線設備功率報告.xlsx");
+            }
+
+            function exportToCSV() {
+                let allData = [];
+                const categoryNames = {
+                    pu: 'PU灌注機',
+                    conveyor: '輸送機',
+                    peripheral: '周邊設備',
+                    dispensing: '自動灌注機'
+                };
+
+                for (const category in equipmentData) {
+                    if (equipmentData.hasOwnProperty(category)) {
+                        equipmentData[category].forEach(item => {
+                            allData.push({
+                                '設備類別': categoryNames[category],
+                                '設備類型': item['設備類型'],
+                                '數量': item['數量'],
+                                '功率': item['功率'],
+                                '單位': item['單位'],
+                                '電壓(V)': item['電壓(V)'],
+                                '相數': item['相數'],
+                                '功因(PF)': item['功因(PF)']
+                            });
+                        });
+                    }
+                }
+
+                if (allData.length === 0) {
+                    showErrorModal("沒有數據可以匯出為 CSV。");
+                    return;
+                }
+
+                // Corrected: Use Papa instead of PapaParse
+                const csv = Papa.unparse(allData);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                if (link.download !== undefined) {
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', "生產線設備功率報告.csv");
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            }
+
+            const errorModal = document.getElementById('error-modal');
+            const errorMessage = document.getElementById('error-message');
+            const closeModalButton = document.getElementById('close-modal');
+
+            function showErrorModal(message) {
+                errorMessage.textContent = message;
+                errorModal.classList.remove('hidden');
+            }
+
+            closeModalButton.addEventListener('click', () => {
+                errorModal.classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
