@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台車（模具）辨識系統與自動配方應用</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設定字體為 Inter，用於更好的視覺效果 */
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+
+        #conveyorCanvas {
+            border: 4px solid #D1D5DB;
+            background-color: #f9fafb;
+            /* 邊框 */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#1D4ED8',
+                        'secondary-gray': '#374151',
+                    }
+                }
+            }
+        }
+
+        // 案例內容資料
+        const cases = {
+            'case1': {
+                title: "案例 1: 純軟體射料計數循環",
+                mechanism: "輸送帶上沒有感測器 (LS)。PLC 依賴射出機/灌注機的『射料完成』訊號作為觸發事件，將當前台車號碼加 1。",
+                cycle: "當灌注號碼累加至設定的循環號碼 N (如 20) 時，系統將台車號碼重置為 1 號，進入下一個循環。",
+                pros: "<ul><li>✓ 系統成本最低，無需額外感測器硬體。</li><li>✓ 適用於單站式、動作嚴謹的生產流程。</li></ul>",
+                cons: "<ul><li>✗ 需人工確認台車是否準確到位。</li><li>✗ 若射料動作異常或跳過，可能導致**灌注配方錯誤**。</li></ul>",
+                icon: "M13.5 10.5h-11m11 0c.848-.848.848-2.31 0-3.158l-1.5-1.5-.75-.75M13.5 10.5l1.5 1.5 2.25 2.25m-3.75-3.75a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0ZM3 15.75a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1-4.5 0ZM13.5 6a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z",
+                vendors: "維樂"
+            },
+            'case2': {
+                title: "案例 2: 雙限位開關 (LS) 物理歸零",
+                mechanism: "輸送帶設有兩組限位開關：『加 1 LS』和『1 號 (歸 1) LS』。台車上有結構（如 PIN 柱）觸發 LS。",
+                cycle: "<ul><li>**加 1 邏輯**：每台台車經過『加 1 LS』，台車號碼累加 1。</li><li>**歸 1 邏輯**：只有 1 號台車的突出結構能觸發『1 號 LS』，強制將計數器歸零為 1 號。</li></ul>",
+                pros: "<ul><li>✓ 物理歸零機制，計數錯位時可**自動校正**。</li><li>✓ 結構簡單，穩定性高，抗干擾能力強。</li></ul>",
+                cons: "<ul><li>✗ LS 和台車結構的**機械安裝精度要求高**。</li><li>✗ 輸送帶速度過快可能影響 LS 訊號的讀取時間。</li></ul>",
+                icon: "M10.5 6a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM12 7.5v6.75m-3.75 0H9",
+                vendors: "翔順、偉鈺、友聯、信昌、興昂、全興興業、銓興化成"
+            },
+            'case3': {
+                title: "案例 3: 編碼器 (Encoder) 脈衝計算",
+                mechanism: "在輸送帶鏈輪上加裝同步帶，連接至編碼器。透過編碼器產生的脈衝數來精確計算輸送帶的位移距離。",
+                cycle: "<ul><li>**計數邏輯**：系統計算達到一個台車間距所需的脈衝數，達到後台車號碼累加 1。</li><li>**歸 1 邏輯**：必須搭配『1 號 LS』，由 1 號台車觸發，用於**校準**編碼器計算的位置。</li></ul>",
+                pros: "<ul><li>✓ **精度最高**，不受台車速度變化影響，準確追蹤實際位移。</li><li>✓ 適用於長距離或速度多變的產線。</li></ul>",
+                cons: "<ul><li>✗ 系統成本較高，需安裝精密同步機構。</li><li>✗ 首次設定時，需精確量測**脈衝數與物理間距的換算關係**。</li><li>✗ **鏈條磨損問題**：鏈條長期受力會變長，導致鏈輪與鏈條的節距差異，進而造成台車號碼辨識誤差累積。</li></ul>",
+                icon: "M4.5 7.5v2.25m0-2.25a1.5 1.5 0 0 0 0 3m0-3h8.25m-8.25 0L6.34 4.5H19.5a.75.75 0 0 1 .75.75V19.5a.75.75 0 0 1-.75.75H6.34L4.5 22.5M10.5 10.5l-3.75 3.75m3.75-3.75l3.75 3.75m-3.75-3.75a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Zm6 0a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM12 18h.008v.008H12z",
+                vendors: "清祿、寶成、高樂、新康、萬邦"
+            },
+            'case4': {
+                title: "案例 4: 條碼 (Barcode) 辨識系統",
+                mechanism: "台車上設計條碼牌。在灌注機上架設條碼掃描器，並配合一個觸發掃描的 LS。掃描器與 PLC 透過 RS485/RS232 進行通訊。",
+                cycle: "<ul><li>**配方登錄**：HMI 手動輸入或掃描條碼，預先登錄條碼與灌注配方號的對應關係。</li><li>**辨識切換**：台車經過時，觸發 LS 啟動掃描。條碼資料傳送至 PLC，PLC 依據對應表切換至正確的灌注配方號。</li></ul>",
+                pros: "<ul><li>✓ **隨機存取 (Random Access)**：不需依照 1,2,3 順序，支援混線生產。</li><li>✓ 每個台車/模具擁有**唯一 ID**，數據追溯性強，便於生產履歷管理。</li><li>✓ 避免因人為排列錯誤導致的配方錯用。</li></ul>",
+                cons: "<ul><li>✗ 條碼易受**油污、灰塵或物理損壞**，影響讀取率。</li><li>✗ 需要額外的**條碼掃描硬體**和複雜的**通訊協議/HMI 設置**。</li><li>✗ 條碼識別是**單次事件**，無法持續追蹤輸送帶上的位置。</li></ul>",
+                icon: "M3 7v10h18V7H3zM6 10h12M6 14h12",
+                vendors: "豐泰"
+            }
+        };
+
+        // --- Canvas Animation Logic (保持不變) ---
+        let canvas, ctx, animationFrameId;
+
+        const conveyorWidth = 750;
+        const conveyorHeight = 300;
+        const trackWidth = 15;
+        const topY = 70;
+        const bottomY = 230;
+        const centerY = (topY + bottomY) / 2;
+        const radius = (bottomY - topY) / 2;
+        const paddingX = 50;
+        const leftCenterX = paddingX + radius;
+        const rightCenterX = conveyorWidth - paddingX - radius;
+        const straightLength = rightCenterX - leftCenterX;
+        const trolleyCount = 10;
+        const trolleyWidth = 50;
+        const trolleyHeight = 30;
+        const circumference = Math.PI * radius * 2;
+        const totalTrackLength = straightLength * 2 + circumference;
+        const trolleySpacing = totalTrackLength / trolleyCount;
+        const speed = 1.0;
+        const pulseScaleFactor = 0.16;
+        const HOME_X = 425;
+        const HOME_Y = bottomY;
+        const PROCESS_X = 325;
+        const PROCESS_Y = bottomY;
+
+        let trolleys = [];
+        let currentCase = 'case1';
+        let plcCounter = 1;
+        let scanStatus = "N/A";
+        let encoderPulse = 0;
+        let encoderReset = false;
+        const totalTrackLengthMM = trolleyCount * 1000;
+        const distancePerCarMM = 1000;
+        const distancePerCar = distancePerCarMM;
+        const pixelToMmScale = totalTrackLengthMM / (totalTrackLength * trolleyCount);
+
+        function initTrolleys() {
+            trolleys = [];
+            plcCounter = 1;
+            const segment1Length = straightLength;
+            const segment2Length = Math.PI * radius;
+            const segment3Length = straightLength;
+            const curveLength = segment2Length;
+
+            for (let i = 0; i < trolleyCount; i++) {
+                const distanceAlongPath = i * trolleySpacing;
+                let x = 0, y = 0, segment = 1;
+                let remainingDistance = distanceAlongPath;
+                let distanceInSegment = 0;
+
+                if (remainingDistance <= segment1Length) {
+                    x = leftCenterX + remainingDistance;
+                    y = topY;
+                    segment = 1;
+                } else if (remainingDistance <= segment1Length + curveLength) {
+                    remainingDistance -= segment1Length;
+                    distanceInSegment = remainingDistance;
+                    const angleFromStart = distanceInSegment / radius;
+                    const angle = (1.5 * Math.PI) - angleFromStart;
+                    x = rightCenterX + radius * Math.cos(angle);
+                    y = centerY + radius * Math.sin(angle);
+                    segment = 2;
+                } else if (remainingDistance <= segment1Length + curveLength + segment3Length) {
+                    remainingDistance -= (segment1Length + curveLength);
+                    x = rightCenterX - remainingDistance;
+                    y = bottomY;
+                    segment = 3;
+                } else {
+                    remainingDistance -= (segment1Length + curveLength + segment3Length);
+                    distanceInSegment = remainingDistance;
+                    const angleFromStart = distanceInSegment / radius;
+                    const angle = (0.5 * Math.PI) + angleFromStart;
+                    x = leftCenterX + radius * Math.cos(angle);
+                    y = centerY + radius * Math.sin(angle);
+                    segment = 4;
+                }
+                const physicalId = trolleyCount - i;
+                trolleys.push({
+                    id: physicalId,
+                    x: x,
+                    y: y,
+                    segment: segment,
+                    distanceInSegment: distanceInSegment,
+                    isDetected: false,
+                    isHomeTrolley: (physicalId === 1),
+                    counted: false,
+                    homed: false,
+                    barcode: `ITEM-${100 + physicalId}`
+                });
+            }
+        }
+
+        function drawConveyor() {
+            ctx.clearRect(0, 0, conveyorWidth, conveyorHeight);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = trackWidth;
+            ctx.lineCap = 'butt';
+            ctx.beginPath();
+            ctx.moveTo(leftCenterX, topY);
+            ctx.lineTo(rightCenterX, topY);
+            ctx.arc(rightCenterX, centerY, radius, 1.5 * Math.PI, 0.5 * Math.PI, false);
+            ctx.lineTo(leftCenterX, bottomY);
+            ctx.arc(leftCenterX, centerY, radius, 0.5 * Math.PI, 1.5 * Math.PI, false);
+            ctx.stroke();
+
+            ctx.fillStyle = '#C7D2FE';
+            ctx.fillRect(PROCESS_X - 30, PROCESS_Y - 40, 60, 50);
+            ctx.fillStyle = '#1D4ED8';
+            ctx.font = '14px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText('灌注/加工站 (Process)', PROCESS_X, PROCESS_Y - 20);
+
+            if (currentCase !== 'case1' && currentCase !== 'case4') {
+                ctx.fillStyle = '#FECACA';
+                ctx.fillRect(HOME_X - 50, HOME_Y + 10, 100, 40);
+                ctx.fillStyle = '#DC2626';
+                ctx.fillText('歸零/校準區 (Home)', HOME_X, HOME_Y + 35);
+            }
+
+            if (currentCase === 'case2' || currentCase === 'case3') {
+                ctx.fillStyle = '#DC2626';
+                ctx.fillRect(HOME_X - 10, HOME_Y - 40, 10, 40);
+                ctx.fillText('LS#1 (歸1)', HOME_X - 5, HOME_Y - 45);
+            }
+
+            if (currentCase === 'case2') {
+                ctx.fillStyle = '#10B981';
+                ctx.fillRect(PROCESS_X + 30, PROCESS_Y - 40, 10, 40);
+                ctx.fillText('LS+1', PROCESS_X + 35, PROCESS_Y - 45);
+            }
+
+            if (currentCase === 'case3') {
+                ctx.strokeStyle = '#8B5CF6';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(leftCenterX, centerY, 15, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.fillStyle = '#8B5CF6';
+                ctx.fillText('Encoder', leftCenterX, centerY - radius + 60);
+            }
+
+            if (currentCase === 'case4') {
+                ctx.fillStyle = '#059669';
+                ctx.fillRect(PROCESS_X + 5, PROCESS_Y - 40, 30, 10);
+                ctx.fillStyle = '#047857';
+                ctx.fillText('Barcode Scan', PROCESS_X + 20, PROCESS_Y - 55);
+                ctx.fillStyle = '#FBBF24';
+                ctx.fillRect(PROCESS_X + 40, PROCESS_Y - 40, 10, 40);
+                ctx.fillStyle = '#B45309';
+                ctx.fillText('LS Trigger', PROCESS_X + 70, PROCESS_Y - 40);
+            }
+
+            ctx.fillStyle = '#374151';
+            // 加寬背景框以容納更多資訊 (原本是 240)
+            ctx.fillRect(10, 10, 320, 50);
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'left';
+            if (currentCase === 'case3') {
+                // 計算單台車相對位置 (0~1000mm)
+                const carPosition = encoderPulse % distancePerCar;
+
+                // 繪製兩行資訊
+                ctx.font = '14px Inter';
+                ctx.fillText(`ID: ${plcCounter} | Encoder: ${encoderPulse.toFixed(0)} mm`, 20, 30);
+                ctx.fillText(`台車位置: ${carPosition.toFixed(0)} mm (相對位置)`, 20, 50);
+            } else {
+                // 其他案例維持單行顯示
+                ctx.font = '16px Inter';
+                const counterText = (currentCase === 'case4')
+                    ? `ID: ${plcCounter} (Scan: ${scanStatus})`
+                    : `ID: ${plcCounter}`;
+                ctx.fillText(counterText, 20, 40);
+            }
+        }
+
+        function updateTrolleys() {
+            const distanceStep = speed;
+            const processX = PROCESS_X;
+            const homeX = HOME_X;
+            const curveLength = Math.PI * radius;
+
+            trolleys.forEach(trolley => {
+                if (trolley.segment === 1) {
+                    trolley.x += distanceStep;
+                    if (trolley.x >= rightCenterX) {
+                        trolley.x = rightCenterX;
+                        trolley.y = topY;
+                        trolley.segment = 2;
+                        trolley.distanceInSegment = 0;
+                    }
+                } else if (trolley.segment === 2) {
+                    trolley.distanceInSegment += distanceStep;
+                    if (trolley.distanceInSegment >= curveLength) {
+                        trolley.x = rightCenterX;
+                        trolley.y = bottomY;
+                        trolley.segment = 3;
+                        trolley.distanceInSegment = 0;
+                    } else {
+                        const angleFromStart = trolley.distanceInSegment / radius;
+                        const angle = (0.5 * Math.PI) - angleFromStart;
+                        trolley.x = rightCenterX + radius * Math.cos(angle);
+                        trolley.y = centerY - radius * Math.sin(angle);
+                    }
+                } else if (trolley.segment === 3) {
+                    trolley.x -= distanceStep;
+                    if (trolley.x <= leftCenterX) {
+                        trolley.x = leftCenterX;
+                        trolley.y = bottomY;
+                        trolley.segment = 4;
+                        trolley.distanceInSegment = 0;
+                    }
+                } else if (trolley.segment === 4) {
+                    trolley.distanceInSegment += distanceStep;
+                    if (trolley.distanceInSegment >= curveLength) {
+                        trolley.x = leftCenterX;
+                        trolley.y = topY;
+                        trolley.segment = 1;
+                        trolley.distanceInSegment = 0;
+                        trolley.counted = false;
+                        trolley.homed = false;
+                    } else {
+                        const angleFromStart = trolley.distanceInSegment / radius;
+                        const angle = (0.5 * Math.PI) + angleFromStart;
+                        trolley.x = leftCenterX + radius * Math.cos(angle);
+                        trolley.y = centerY + radius * Math.sin(angle);
+                    }
+                }
+
+                const isNearDetection = (trolley.segment === 3) && (trolley.x <= processX + trolleyWidth / 2) && (trolley.x >= processX - trolleyWidth / 2);
+                const isNearHome = (trolley.segment === 3) && (trolley.x <= homeX + trolleyWidth / 2) && (trolley.x >= homeX - trolleyWidth / 2);
+                trolley.isDetected = isNearDetection;
+                const isLeavingProcessZone = (trolley.segment === 3) && (trolley.x < PROCESS_X - trolleyWidth / 2) && (trolley.x > PROCESS_X - trolleyWidth / 2 - speed * 2);
+                const LS_PLUS_ONE_X = PROCESS_X + 35;
+                const isNearLSPlusOne = (trolley.segment === 3) && (trolley.x <= LS_PLUS_ONE_X + trolleyWidth / 2) && (trolley.x >= LS_PLUS_ONE_X - trolleyWidth / 2);
+
+                if (currentCase === 'case1') {
+                    if (isLeavingProcessZone && !trolley.counted) {
+                        plcCounter = (plcCounter % trolleyCount) + 1;
+                    }
+                }
+                if (currentCase === 'case2') {
+                    if (isNearHome) {
+                        if (trolley.isHomeTrolley && !trolley.homed) {
+                            plcCounter = 1;
+                            trolley.homed = true;
+                            trolley.counted = true;
+                        }
+                    }
+                    if (isNearLSPlusOne && !trolley.counted) {
+                        plcCounter = (plcCounter % trolleyCount) + 1;
+                        trolley.counted = true;
+                    }
+                }
+                if (currentCase === 'case3') {
+                    // --- 修改部分開始 ---
+                    // 1. 歸零邏輯：只有在碰到原點 (Home) 時才將總數值歸零
+                    if (isNearHome && trolley.isHomeTrolley && !trolley.homed) {
+                        encoderPulse = 0;   // 總累積歸零
+                        encoderReset = true;
+                        plcCounter = 1;
+                        trolley.homed = true;
+                    }
+                    // 2. 累積與計算邏輯
+                    if (encoderReset) {
+                        // 移除 pulseScaleFactor，讓數值真實對應物理長度 (0~6000mm)
+                        const mmMoved = distanceStep * pixelToMmScale;
+                        encoderPulse += mmMoved;
+
+                        // 根據總累積長度推算現在是第幾號台車 (每 1000mm 一台)
+                        // 例如: 1500mm / 1000 = 1.5 -> floor 為 1 -> +1 為 ID:2
+                        let calculatedId = Math.floor(encoderPulse / distancePerCar) + 1;
+
+                        // 防止數值在歸零前瞬間些微溢出導致 ID 跳號
+                        if (calculatedId > trolleyCount) calculatedId = 1;
+
+                        plcCounter = calculatedId;
+                    }
+
+                }
+                if (currentCase === 'case4') {
+                    if (isNearDetection) {
+                        scanStatus = trolley.barcode;
+                        plcCounter = trolley.id;
+                    }
+                }
+            });
+        }
+
+        function drawTrolleys() {
+            trolleys.forEach(trolley => {
+                const x = trolley.x;
+                const y = trolley.y;
+                ctx.fillStyle = trolley.isDetected ? '#FDBA74' : '#60A5FA';
+                ctx.fillRect(x - trolleyWidth / 2, y - trolleyHeight / 2, trolleyWidth, trolleyHeight);
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(`ID ${trolley.id}`, x, y + 5);
+                if (trolley.isHomeTrolley && (currentCase === 'case2' || currentCase === 'case3')) {
+                    ctx.fillStyle = '#DC2626';
+                    ctx.fillRect(x - 5, y - trolleyHeight / 2 - 8, 10, 8);
+                }
+                if (currentCase === 'case4') {
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(x + trolleyWidth / 2 - 15, y - 20, 15, 5);
+                    ctx.fillStyle = 'gray';
+                    ctx.font = '8px Inter';
+                    ctx.fillText(trolley.barcode, x + trolleyWidth / 2 - 15, y + 15);
+                }
+            });
+        }
+
+        function animate() {
+            updateTrolleys();
+            drawConveyor();
+            drawTrolleys();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function setupAnimation(caseId) {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            currentCase = caseId;
+            initTrolleys();
+            animate();
+        }
+
+        function showCase(caseId) {
+            setupAnimation(caseId);
+            currentCase = caseId;
+            const data = cases[caseId];
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('bg-primary-blue', 'text-white', 'shadow-lg');
+                btn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-primary-blue/10');
+            });
+            document.getElementById(`tab-${caseId}`).classList.add('bg-primary-blue', 'text-white', 'shadow-lg');
+            document.getElementById(`tab-${caseId}`).classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-primary-blue/10');
+            const contentDiv = document.getElementById('case-content-details'); // 修改 ID 避免混淆
+            contentDiv.classList.add('opacity-0', 'scale-95');
+            setTimeout(() => {
+                document.getElementById('case-title').textContent = data.title;
+                document.getElementById('case-vendors').innerHTML = `<h3 class="text-xl font-semibold mb-1 text-yellow-800 flex items-center"><svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.844v-3.688m-11.25 0H15m0 0H1.5M15 10.156V6m0 4.156v4.688m-11.25 0H15m0 0H1.5M4.5 7.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm0 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm12 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path></svg>應用廠商 (Vendors)</h3><p class="text-yellow-700 font-medium">${data.vendors}</p>`;
+                document.getElementById('case-mechanism').innerHTML = `<h3 class="text-xl font-semibold mb-2 text-primary-blue flex items-center"><svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${data.icon}"></path></svg>辨識原理與機制</h3><p class="text-gray-600">${data.mechanism}</p>`;
+                document.getElementById('case-cycle').innerHTML = `<h3 class="text-xl font-semibold mt-6 mb-2 text-primary-blue flex items-center"><svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.75 7.5h14.5m-14.5 0l-1 14.5a.75.75 0 0 0 .75.75h14.5a.75.75 0 0 0 .75-.75L19.25 7.5m-14.5 0a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1-4.5 0Zm0 0h4.5m-4.5 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Zm4.5 0h4.5m-4.5 0a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1 4.5 0Zm4.5 0h4.5m-4.5 0a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1 4.5 0Z"></path></svg>循環與歸位邏輯</h3><div class="text-gray-600">${data.cycle}</div>`;
+                document.getElementById('case-pros').innerHTML = `<h3 class="text-xl font-semibold mt-6 mb-2 text-green-700 flex items-center"><svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>優點 (Pros)</h3><ul class="list-disc ml-6 space-y-1 text-green-600 font-medium">${data.pros}</ul>`;
+                document.getElementById('case-cons').innerHTML = `<h3 class="text-xl font-semibold mt-6 mb-2 text-red-700 flex items-center"><svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>缺點 (Cons)</h3><ul class="list-disc ml-6 space-y-1 text-red-600 font-medium">${data.cons}</ul>`;
+                contentDiv.classList.remove('opacity-0', 'scale-95');
+            }, 100);
+        }
+
+        window.onload = () => {
+            canvas = document.getElementById('conveyorCanvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = conveyorWidth;
+            canvas.height = conveyorHeight;
+            showCase('case1');
+        };
+    </script>
+</head>
+
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8"><div class="fixed top-4 left-4 z-50"><img src="/websites/logo_backgroundl.png" class="h-12 w-auto rounded shadow-sm" alt="Logo"></div><a href="/websites/" class="fixed top-4 right-4 z-50 bg-white px-4 py-2 rounded-full shadow-md text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all border border-slate-200">← 返回首頁</a>
+
+    <div class="max-w-7xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden">
+
+        <header class="bg-primary-blue text-white p-6 sm:p-8">
+            <h1 class="text-3xl sm:text-4xl font-extrabold mb-1">台車（模具）辨識系統與應用</h1>
+            <p class="text-primary-blue/80 text-lg">確保自動化生產線精準追蹤與配方自動切換技術</p>
+        </header>
+
+        <div class="p-6 sm:p-8">
+
+            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
+                <button id="tab-case1"
+                    class="tab-button px-6 py-3 rounded-xl font-semibold transition duration-300 transform hover:scale-[1.02] active:scale-95 text-sm sm:text-base"
+                    onclick="showCase('case1')">1. 純軟體計數</button>
+                <button id="tab-case2"
+                    class="tab-button px-6 py-3 rounded-xl font-semibold transition duration-300 transform hover:scale-[1.02] active:scale-95 text-sm sm:text-base"
+                    onclick="showCase('case2')">2. 雙 LS 物理歸零</button>
+                <button id="tab-case3"
+                    class="tab-button px-6 py-3 rounded-xl font-semibold transition duration-300 transform hover:scale-[1.02] active:scale-95 text-sm sm:text-base"
+                    onclick="showCase('case3')">3. 編碼器脈衝</button>
+                <button id="tab-case4"
+                    class="tab-button px-6 py-3 rounded-xl font-semibold transition duration-300 transform hover:scale-[1.02] active:scale-95 text-sm sm:text-base"
+                    onclick="showCase('case4')">4. 條碼 (Barcode) 系統</button>
+            </div>
+
+            <div class="bg-gray-100 p-6 rounded-xl shadow-inner mb-8">
+                <h1 id="case-title" class="text-3xl font-extrabold text-gray-900 mb-4"></h1>
+
+                <div class="mb-6 p-4 bg-white rounded-lg shadow-md border border-gray-200">
+                    <h3 class="text-xl font-bold mb-3 text-secondary-gray flex items-center">
+                        <span class="bg-primary-blue text-white text-sm py-1 px-2 rounded mr-2">Step 1</span>
+                        前端辨識：流水線台車號碼追蹤
+                    </h3>
+                    <canvas id="conveyorCanvas" class="mx-auto block w-full rounded"></canvas>
+                    <p class="text-sm text-gray-500 mt-2 text-center">說明：系統首先透過不同技術（軟體/LS/編碼器）確認目前到達灌注站的是「幾號台車」。</p>
+                </div>
+
+                <div id="case-content-details"
+                    class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 transition duration-300 ease-in-out">
+                    <div class="space-y-4">
+                        <div id="case-vendors" class="mb-4 p-2 bg-yellow-100 rounded-lg border-l-4 border-yellow-500">
+                        </div>
+                        <div id="case-mechanism" class="border-b pb-4"></div>
+                        <div id="case-cycle"></div>
+                    </div>
+                    <div class="space-y-4 md:border-l md:pl-8">
+                        <div id="case-pros" class="border-b pb-4"></div>
+                        <div id="case-cons"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t pt-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2 flex items-center">
+                    <svg class="w-8 h-8 mr-2 text-primary-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
+                        </path>
+                    </svg>
+                    HMI 實務應用：從 ID 辨識到自動配方執行
+                </h2>
+                <div class="bg-blue-50 border-l-4 border-primary-blue p-4 mb-6">
+                    <p class="text-blue-900 font-medium">系統整合說明：</p>
+                    <p class="text-blue-800 text-sm mt-1">
+                        無論是採用哪種方案，只要 PLC 能夠確認當前的<span class="font-bold">「台車編號
+                            (ID)」</span>，都能無縫對應到下方的 HMI 系統，實現自動配方切換。
+                    </p>
+                </div>
+                <p class="text-gray-600 mb-6">一旦系統確認了「台車編號 (ID)」，PLC 將與 HMI 設定畫面進行連動，自動執行以下邏輯以確保生產正確：</p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col">
+                        <div class="bg-slate-800 text-white py-2 px-4 font-bold flex justify-between items-center">
+                            <span>Step 2: 映射配方</span>
+                            <span class="text-xs bg-slate-600 py-1 px-2 rounded">台車設定畫面</span>
+                        </div>
+                        <div class="relative group">
+                            <img src="Car.png" alt="台車設定畫面"
+                                class="w-full h-48 object-cover object-top transition duration-500 group-hover:scale-110 cursor-pointer"
+                                onclick="window.open(this.src)">
+                            <div
+                                class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition duration-500">
+                            </div>
+                        </div>
+                        <div class="p-4 flex-grow">
+                            <h4 class="font-bold text-gray-800 mb-2">確認要灌注什麼？</h4>
+                            <p class="text-sm text-gray-600 mb-3">當系統辨識出目前是 <span class="font-bold text-blue-600">ID:01
+                                    台車</span> 時，會查閱此表。</p>
+                            <ul class="text-sm text-slate-700 list-disc ml-4 space-y-1">
+                                <li><strong>台車 (ID)：</strong> 對應物理台車編號。</li>
+                                <li><strong>灌注 (Code)：</strong> 指定該台車應使用的<span class="text-red-500 font-bold">配方號碼 (例如
+                                        1)</span>。</li>
+                                <li><strong>狀態：</strong> 決定是否進行灌注或跳過。</li>
+                                <li><strong>清潔：</strong> 決定是否進行清潔或跳過。</li>
+                            </ul>
+                        </div>
+                        <div class="bg-gray-50 p-3 text-center border-t">
+                            <span class="text-xs text-gray-500">Output: 取得配方代碼 (如: 1)</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col">
+                        <div class="bg-slate-800 text-white py-2 px-4 font-bold flex justify-between items-center">
+                            <span>Step 3: 執行參數</span>
+                            <span class="text-xs bg-slate-600 py-1 px-2 rounded">灌注配方畫面</span>
+                        </div>
+                        <div class="relative group">
+                            <img src="Recipe.png" alt="灌注配方設定畫面"
+                                class="w-full h-48 object-cover object-top transition duration-500 group-hover:scale-110 cursor-pointer"
+                                onclick="window.open(this.src)">
+                            <div
+                                class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition duration-500">
+                            </div>
+                        </div>
+                        <div class="p-4 flex-grow">
+                            <h4 class="font-bold text-gray-800 mb-2">如何進行灌注？</h4>
+                            <p class="text-sm text-gray-600 mb-3">PLC 根據上一步取得的 <span class="text-red-500 font-bold">配方代碼
+                                    (1)</span>，在此頁面讀取詳細參數。</p>
+                            <ul class="text-sm text-slate-700 list-disc ml-4 space-y-1">
+                                <li><strong>比例 (POL/ISO)：</strong> 自動調整兩種原料的混合比 (如 100:58)。</li>
+                                <li><strong>流量/重量：</strong> 精確控制吐出總量 (如 500g)。</li>
+                            </ul>
+                        </div>
+                        <div class="bg-gray-50 p-3 text-center border-t">
+                            <span class="text-xs text-gray-500">Action: 自動切換泵浦轉速</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col">
+                        <div class="bg-slate-800 text-white py-2 px-4 font-bold flex justify-between items-center">
+                            <span>Step 4: 產量與追溯</span>
+                            <span class="text-xs bg-slate-600 py-1 px-2 rounded">模具設定畫面</span>
+                        </div>
+                        <div class="relative group">
+                            <img src="mold.png" alt="模具設定畫面"
+                                class="w-full h-48 object-cover object-top transition duration-500 group-hover:scale-110 cursor-pointer"
+                                onclick="window.open(this.src)">
+                            <div
+                                class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition duration-500">
+                            </div>
+                        </div>
+                        <div class="p-4 flex-grow">
+                            <h4 class="font-bold text-gray-800 mb-2">生產了什麼？</h4>
+                            <p class="text-sm text-gray-600 mb-3">灌注完成後，系統會連結模具編號與台車/配方。</p>
+                            <ul class="text-sm text-slate-700 list-disc ml-4 space-y-1">
+                                <li><strong>模具編號：</strong> 定義該台車上放置的具體模具 (如 Y2K01-A, 6201-B)。</li>
+                                <li><strong>生產數量：</strong> 自動累加該模具的生產次數，用於管理與產量統計。</li>
+                            </ul>
+                        </div>
+                        <div class="bg-gray-50 p-3 text-center border-t">
+                            <span class="text-xs text-gray-500">Result: 數據庫更新</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="mt-10 border-t pt-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">綜合選擇考量</h2>
+                <ul class="space-y-4 text-gray-700 list-disc ml-6">
+                    <li>**通用性：** 上述所有案例 (1~4) 只要能正確產生「台車編號 ID」，皆可對應我司灌注機 HMI 的「模具設定」與「配方」資料庫，實現自動化生產。</li>
+                    <li>**預算導向 (Case 1)：** 適合預算有限且能接受人工定期校對的場景。</li>
+                    <li>**穩定導向 (Case 2)：** 最經濟實惠且穩定的硬體選擇，適合速度恆定、依序生產的產線。</li>
+                    <li>**精度導向 (Case 3)：** 適合需要高定位精度或輸送帶速度變化的複雜環境。</li>
+                    <li>**彈性與防錯 (Case 4)：** 此方案獨具**隨機存取 (Random Access)** 能力，適合混線生產或需要嚴格防止人為模具擺放順序錯誤的場景。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>
