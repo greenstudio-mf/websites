@@ -95,7 +95,7 @@
                     </div>
                     <div class="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
                         <div>負載功率: <span id="calc_power" class="font-semibold">0</span> W</div>
-                        <div>總電池能量: <span id="calc_energy" class="font-semibold">0</span> Wh</div>
+                        <div>可用電池能量 (DoD 90%): <span id="calc_energy" class="font-semibold">0</span> Wh</div>
                     </div>
                 </div>
             </div>
@@ -119,10 +119,12 @@
 
             // 計算邏輯
             const loadPower = v * i * pf;
-            const totalEnergy = bv * bc * bah * 0.9 * soh; // 0.9 為放電深度係數
+            const dod = 0.9; // 放電深度 (Depth of Discharge) 預設 90% 以保護電池
+            const totalEnergy = bv * bc * bah * dod * soh;
             const selfConsumption = 15; // 固定 15W 自耗電
             
             // 考慮效率的實際需求功率
+            // 實際需求功率 = (負載功率 / 逆變器效率) + 設備自耗電
             const totalPowerDemand = (loadPower / (eff || 0.85)) + selfConsumption;
             
             let minutes = 0;
