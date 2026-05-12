@@ -4,29 +4,130 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GREEN 工具集</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .tool-card:hover { transform: translateY(-5px); transition: all 0.3s ease; }
     </style>
-</head>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 2rem 1rem; 
+        }
+        .container { 
+            max-width: 56rem; 
+            margin: 0 auto; 
+        }
+        .text-center { text-align: center; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-16 { margin-bottom: 4rem; }
+        .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+        .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+        .font-bold { font-weight: 700; }
+        .font-black { font-weight: 900; }
+        .text-slate-800 { color: #1e293b; }
+        .text-slate-600 { color: #475569; }
+        .text-slate-500 { color: #64748b; }
+        .text-lg { font-size: 1.125rem; }
+        .w-20 { width: 5rem; }
+        .h-1 { height: 0.25rem; }
+        .bg-blue-600 { background-color: #2563eb; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .rounded-full { border-radius: 9999px; }
+        
+        .grid-container { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 1.5rem; 
+        }
+        .tool-card { 
+            background: white; 
+            padding: 1.5rem; 
+            border-radius: 1rem; 
+            border: 1px solid #e2e8f0; 
+            text-decoration: none; 
+            transition: all 0.3s ease; 
+            display: block;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .tool-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+            border-color: #3b82f6; 
+        }
+        .icon-box { 
+            width: 3rem; 
+            height: 3rem; 
+            border-radius: 0.75rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.5rem; 
+            margin-bottom: 1rem; 
+            transition: all 0.3s ease;
+        }
+        .bg-blue-100 { background-color: #dbeafe; color: #2563eb; }
+        .bg-green-100 { background-color: #dcfce7; color: #16a34a; }
+        .bg-indigo-100 { background-color: #e0e7ff; color: #4f46e5; }
+        .tool-card:hover .bg-blue-100, .tool-card:hover .bg-green-100, .tool-card:hover .bg-indigo-100 {
+            background-color: currentColor;
+            color: white;
+        }
+        .card-title { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem; }
+        .card-desc { font-size: 0.875rem; color: #64748b; line-height: 1.5; }
+        .card-link { 
+            margin-top: 1rem; 
+            color: #2563eb; 
+            font-size: 0.875rem; 
+            font-weight: 600; 
+            display: flex; 
+            align-items: center; 
+        }
+        .placeholder-card {
+            padding: 1.5rem;
+            background-color: #f1f5f9;
+            border: 2px dashed #cbd5e1;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            opacity: 0.6;
+            color: #94a3b8;
+        }
+        footer {
+            margin-top: 6rem;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+    </style>
+    </head>
 <body class="bg-slate-50 min-h-screen"><div class="fixed top-4 left-4 z-50"><img src="/websites/logo_backgroundl.png" class="h-12 w-auto rounded shadow-sm" alt="Logo"></div>
-    <div class="max-w-4xl mx-auto px-4 py-16">
+    <div class="container">
         <div class="text-center mb-16">
             <h1 class="text-4xl font-black text-slate-800 mb-4">🛠️ GREEN 工具集</h1>
             <p class="text-slate-600 text-lg">這裡收集了所有實用的工程計算與管理小工具</p>
             <div class="mt-4 w-20 h-1 bg-blue-600 mx-auto rounded-full"></div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <a href="/websites/ups-calc/" class="tool-card group p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-400 transition-all">
-                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+        <div class="grid-container">
+            <a href="/websites/ups-calc/" class="tool-card">
+                <div class="icon-box bg-blue-100">
                     🔋
                 </div>
-                <h3 class="text-xl font-bold text-slate-800 mb-2">UPS 備援時間計算</h3>
-                <p class="text-slate-500 text-sm leading-relaxed">估算不間斷電源電池在不同負載下的維持時間。</p>
-                <div class="mt-4 text-blue-600 text-sm font-semibold flex items-center">
+                <h3 class="card-title">UPS 備援時間計算</h3>
+                <p class="card-desc">估算不間斷電源電池在不同負載下的維持時間。</p>
+                <div class="card-link">
                     立即使用 
                     <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </div>
@@ -34,13 +135,13 @@
 
             
             <!-- EPower Tool -->
-            <a href="/websites/epower/" class="tool-card group p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-400 transition-all">
+            <a href="/websites/epower/" class="tool-card">
                 <div class="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-yellow-600 group-hover:text-white transition-colors">
                     ⚡
                 </div>
-                <h3 class="text-xl font-bold text-slate-800 mb-2">EPower 電源計算</h3>
-                <p class="text-slate-500 text-sm leading-relaxed">電源電子與電能計算專業工具，提供高效能的電力參數分析。</p>
-                <div class="mt-4 text-blue-600 text-sm font-semibold flex items-center">
+                <h3 class="card-title">EPower 電源計算</h3>
+                <p class="card-desc">電源電子與電能計算專業工具，提供高效能的電力參數分析。</p>
+                <div class="card-link">
                     立即使用 
                     <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </div>
@@ -48,13 +149,13 @@
 
 
             <!-- TMIS Tool -->
-            <a href="/websites/tmis/" class="tool-card group p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-400 transition-all">
-                <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-green-600 group-hover:text-white transition-colors">
+            <a href="/websites/tmis/" class="tool-card">
+                <div class="icon-box bg-green-100">
                     📊
                 </div>
-                <h3 class="text-xl font-bold text-slate-800 mb-2">TMIS 模具管理系統</h3>
-                <p class="text-slate-500 text-sm leading-relaxed">模具生產資訊管理系統，提供生產追蹤、參數記錄與品質管控。</p>
-                <div class="mt-4 text-blue-600 text-sm font-semibold flex items-center">
+                <h3 class="card-title">TMIS 模具管理系統</h3>
+                <p class="card-desc">模具生產資訊管理系統，提供生產追蹤、參數記錄與品質管控。</p>
+                <div class="card-link">
                     立即使用 
                     <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </div>
@@ -62,19 +163,19 @@
 
 
             <!-- DBView Tool -->
-            <a href="/websites/dbview/" class="tool-card group p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-400 transition-all">
-                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+            <a href="/websites/dbview/" class="tool-card">
+                <div class="icon-box bg-indigo-100">
                     💾
                 </div>
-                <h3 class="text-xl font-bold text-slate-800 mb-2">DBView 資料檢視工具</h3>
-                <p class="text-slate-500 text-sm leading-relaxed">便捷的資料庫導出 CSV 檢視與分析工具，優化資料查閱效率。</p>
-                <div class="mt-4 text-blue-600 text-sm font-semibold flex items-center">
+                <h3 class="card-title">DBView 資料檢視工具</h3>
+                <p class="card-desc">便捷的資料庫導出 CSV 檢視與分析工具，優化資料查閱效率。</p>
+                <div class="card-link">
                     立即使用 
                     <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </div>
             </a>
 
-<div class="p-6 bg-slate-100 rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center opacity-60">
+<div class="placeholder-card">
                 <div class="w-12 h-12 bg-slate-200 text-slate-400 rounded-xl flex items-center justify-center text-2xl mb-4">
                     ➕
                 </div>
