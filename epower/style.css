@@ -1,0 +1,11 @@
+html {
+  height: 100%;
+  width: auto;
+}
+body {
+  background-image: url("logo_backgroundl.png");
+  background-repeat: no-repeat;
+  background-size: 300px auto;
+  background-position: 0px 0px;
+}
+
