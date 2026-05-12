@@ -20,11 +20,15 @@ websites/
 ├── epower/                 # EPower Tool
 │   ├── index.html          # Tool main page
 │   └── style.css           # Tool styles
-└── tmis/                   # TMIS Tooling Management
+├── tmis/                   # TMIS Tooling Management
+│   ├── index.html          # Tool main page
+│   ├── Car.png             # Asset
+│   ├── mold.png            # Asset
+│   └── Recipe.png          # Asset
+└── dbview/                 # DBView Tool
     ├── index.html          # Tool main page
-    ├── Car.png             # Asset
-    ├── mold.png            # Asset
-    └── Recipe.png          # Asset
+    ├── style.css           # Tool styles
+    └── script.js           # Tool logic
 ```
 
 ## ✨ Existing Features
@@ -48,6 +52,12 @@ websites/
 ### 📊 TMIS 模具管理系統
 - **Purpose**: Tooling and production management system for tracking and quality control.
 - **Access**: `/tmis/`
+
+
+
+### 💾 DBView 資料檢視工具
+- **Purpose**: CSV data visualization and analysis tool for exported database views.
+- **Access**: `/dbview/`
 
 
 ## ⚙️ Deployment Strategy
