@@ -12,9 +12,14 @@ The project follows a modular "One-Folder-One-Tool" structure to ensure isolatio
 ```text
 websites/
 ├── index.html              # Main Landing Page (The Hub)
+├── README.md               # Project Overview
 ├── DEPLOY_GUIDE.md         # Deployment & Maintenance SOP
-└── ups-calc/               # UPS Backup Calculator Tool
-    └── index.html          # Tool main page
+├── logo_backgroundl.png    # Global Logo
+├── ups-calc/               # UPS Backup Calculator Tool
+│   └── index.html          # Tool main page
+└── epower/                 # EPower Tool
+    ├── index.html          # Tool main page
+    └── style.css           # Tool styles
 ```
 
 ## ✨ Existing Features
