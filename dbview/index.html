@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weintek cMT Recipe.db 轉換工具</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body><div class="fixed top-4 left-4 z-50"><img src="/websites/logo_backgroundl.png" class="h-12 w-auto rounded shadow-sm" alt="Logo"></div><a href="/websites/" class="fixed top-4 right-4 z-50 bg-white px-4 py-2 rounded-full shadow-md text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-all border border-slate-200">← 返回首頁</a>
+    <div class="container animate-fade-in">
+        <header>
+            <h1>Recipe.db 轉換器</h1>
+            <p>輕鬆將 Weintek cMT 系列配方資料庫轉換為 CSV 格式</p>
+        </header>
+
+        <main>
+            <div id="drop-zone" class="upload-area">
+                <div class="upload-icon">📁</div>
+                <div class="status-text">點擊此處或將 recipe.db 拖放到這裡</div>
+                <p>支援所有 SQLite 格式的 .db 檔案</p>
+                <input type="file" id="file-input" class="hidden" accept=".db">
+            </div>
+
+            <div id="app-content" class="hidden animate-fade-in">
+                <div class="actions" style="margin: 1.5rem 0;">
+                    <button id="download-all" class="btn-primary">
+                        <span>📦</span> 導出所有資料表 (.zip)
+                    </button>
+                    <button id="reset-btn" class="btn-secondary">
+                        <span>🔄</span> 重新上傳
+                    </button>
+                </div>
+
+                <div class="table-list">
+                    <h2>
+                        資料表列表
+                        <span id="table-count" style="font-size: 0.8em; opacity: 0.7;"></span>
+                    </h2>
+                    <div id="table-grid" class="table-grid">
+                        <!-- 資料表按鈕將插入此處 -->
+                    </div>
+                </div>
+
+                <div id="preview-section" class="preview-area hidden" style="margin-top: 2rem;">
+                    <div class="preview-header">
+                        <h3 id="preview-title">預覽: </h3>
+                        <button id="download-single" class="btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                            <span>⬇️</span> 下載此 CSV
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table id="data-table">
+                            <thead><tr id="table-head"></tr></thead>
+                            <tbody id="table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>© 2026 Weintek Recipe Tools | 100% 瀏覽器本地處理，確保資料安全</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
