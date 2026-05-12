@@ -1,3 +1,40 @@
+
+/* Global Header Styles */
+.green-global-logo {
+    position: fixed !important;
+    top: 15px !important;
+    left: 15px !important;
+    width: 48px !important;
+    height: 48px !important;
+    z-index: 10000 !important;
+    background-image: url('/websites/logo_backgroundl.png') !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    border-radius: 4px !important;
+    pointer-events: auto !important;
+}
+
+.green-global-back-btn {
+    position: fixed !important;
+    top: 15px !important;
+    right: 15px !important;
+    z-index: 10000 !important;
+    background: white !important;
+    padding: 8px 16px !important;
+    border-radius: 9999px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #4b5563 !important;
+    text-decoration: none !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    font-family: sans-serif !important;
+}
+.green-global-back-btn:hover {
+    background: #f9fafb !important;
+}
+
 html {
   height: 100%;
   width: auto;
