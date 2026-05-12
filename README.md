@@ -17,9 +17,14 @@ websites/
 ├── logo_backgroundl.png    # Global Logo
 ├── ups-calc/               # UPS Backup Calculator Tool
 │   └── index.html          # Tool main page
-└── epower/                 # EPower Tool
+├── epower/                 # EPower Tool
+│   ├── index.html          # Tool main page
+│   └── style.css           # Tool styles
+└── tmis/                   # TMIS Tooling Management
     ├── index.html          # Tool main page
-    └── style.css           # Tool styles
+    ├── Car.png             # Asset
+    ├── mold.png            # Asset
+    └── Recipe.png          # Asset
 ```
 
 ## ✨ Existing Features
