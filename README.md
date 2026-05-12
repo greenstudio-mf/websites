@@ -12,9 +12,9 @@ The project follows a modular "One-Folder-One-Tool" structure to ensure isolatio
 ```text
 websites/
 ├── index.html              # Main Landing Page (The Hub)
+├── DEPLOY_GUIDE.md         # Deployment & Maintenance SOP
 └── ups-calc/               # UPS Backup Calculator Tool
-    ├── index.html          # Tool main page
-    └── DEPLOY_GUIDE.md     # Deployment & Maintenance SOP
+    └── index.html          # Tool main page
 ```
 
 ## ✨ Existing Features
