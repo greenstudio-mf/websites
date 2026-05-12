@@ -28,6 +28,12 @@ websites/
   - Dynamic load visualization with capacity warnings.
 - **Access**: `/ups-calc/`
 
+
+### ⚡ EPower Tool
+- **Purpose**: Power electronics and electrical energy calculation tool.
+- **Access**: `/epower/`
+
+
 ## ⚙️ Deployment Strategy
 
 This repository uses a **GitHub API-driven deployment workflow** instead of traditional Git CLI to maximize stability and speed:
