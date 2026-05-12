@@ -3,7 +3,7 @@ html {
   width: auto;
 }
 body {
-  background-image: url("/websites/logo_backgroundl.png");
+  background-image: none;
   background-repeat: no-repeat;
   background-size: 300px auto;
   background-position: 0px 0px;
