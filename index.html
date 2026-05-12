@@ -1,1 +1,48 @@
-Hello GitHub Pages
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MF-Studio 網頁工具集</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .tool-card:hover { transform: translateY(-5px); transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="max-w-4xl mx-auto px-4 py-16">
+        <div class="text-center mb-16">
+            <h1 class="text-4xl font-black text-slate-800 mb-4">🛠️ MF-Studio 工具集</h1>
+            <p class="text-slate-600 text-lg">這裡收集了所有實用的工程計算與管理小工具</p>
+            <div class="mt-4 w-20 h-1 bg-blue-600 mx-auto rounded-full"></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <a href="/websites/ups-calc/" class="tool-card group p-6 bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-400 transition-all">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    🔋
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">UPS 備援時間計算</h3>
+                <p class="text-slate-500 text-sm leading-relaxed">精確估算不間斷電源電池在不同負載下的維持時間。</p>
+                <div class="mt-4 text-blue-600 text-sm font-semibold flex items-center">
+                    立即使用 
+                    <svg class="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </div>
+            </a>
+
+            <div class="p-6 bg-slate-100 rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center opacity-60">
+                <div class="w-12 h-12 bg-slate-200 text-slate-400 rounded-xl flex items-center justify-center text-2xl mb-4">
+                    ➕
+                </div>
+                <h3 class="text-lg font-medium text-slate-500">準備開發中...</h3>
+            </div>
+        </div>
+
+        <footer class="mt-24 text-center text-slate-400 text-sm">
+            &copy; 2026 MF-Studio Lab. Powered by Hermes Agent.
+        </footer>
+    </div>
+</body>
+</html>
