@@ -4,15 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPS 備援時間計算工具</title>
-    
-    
-<link rel="stylesheet" href="/websites/ups-calc/style.css"><script src="https://cdn.tailwindcss.com"></script></head>
-<body class="bg-slate-100 min-h-screen py-8 px-4"><div style="position: fixed !important; top: 15px !important; left: 15px !important; z-index: 10000 !important; pointer-events: auto !important;"><img src="/websites/logo_backgroundl.png" style="width: 48px !important; height: auto !important; display: block !important;" alt="Logo"></div><a href="/websites/" style="position: fixed !important; top: 15px !important; right: 15px !important; z-index: 10000 !important; background: white !important; padding: 8px 16px !important; border-radius: 9999px !important; font-size: 14px !important; font-weight: 600 !important; color: #4b5563 !important; text-decoration: none !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">← 返回首頁</a><div class="green-global-logo"></div><div style="position: fixed !important; top: 15px !important; left: 15px !important; z-index: 10000 !important; pointer-events: auto !important;"></div><div class="fixed top-4 left-4 z-50"></div>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen py-8 px-4"><div style="position: fixed !important; top: 15px !important; left: 15px !important; z-index: 10000 !important; pointer-events: auto !important;"><img src="/websites/logo_backgroundl.png" style="width: 48px !important; height: auto !important; display: block !important;" alt="Logo"></div><a href="/websites/" style="position: fixed !important; top: 15px !important; right: 15px !important; z-index: 10000 !important; background: white !important; padding: 8px 16px !important; border-radius: 9999px !important; font-size: 14px !important; font-weight: 600 !important; color: #4b5563 !important; text-decoration: none !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">← 返回首頁</a>
     <div class="max-w-2xl mx-auto">
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-slate-800 mb-2">🔋 UPS 備援時間計算機</h1>
-            <p class="text-slate-600">估算不間斷電源電池維持時間</p>
+            <p class="text-slate-600">精確估算不間斷電源電池維持時間</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -91,7 +95,7 @@
                     </div>
                     <div class="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500">
                         <div>負載功率: <span id="calc_power" class="font-semibold">0</span> W</div>
-                        <div>可用電池能量 (DoD 90%): <span id="calc_energy" class="font-semibold">0</span> Wh</div>
+                        <div>總電池能量: <span id="calc_energy" class="font-semibold">0</span> Wh</div>
                     </div>
                 </div>
             </div>
@@ -115,12 +119,10 @@
 
             // 計算邏輯
             const loadPower = v * i * pf;
-            const dod = 0.9; // 放電深度 (Depth of Discharge) 預設 90% 以保護電池
-            const totalEnergy = bv * bc * bah * dod * soh;
+            const totalEnergy = bv * bc * bah * 0.9 * soh; // 0.9 為放電深度係數
             const selfConsumption = 15; // 固定 15W 自耗電
             
             // 考慮效率的實際需求功率
-            // 實際需求功率 = (負載功率 / 逆變器效率) + 設備自耗電
             const totalPowerDemand = (loadPower / (eff || 0.85)) + selfConsumption;
             
             let minutes = 0;
