@@ -95,3 +95,21 @@ def deploy_to_github(token, repo, path, local_file):
 ### 導覽頁維護流程
 每當新增一個子工具時，需同步更新根目錄的 index.html：
 1. 獲取 index.html 的現有內容 $ightarrow$ 2. 在 HTML 中插入新的工具卡片 $ightarrow$ 3. 獲取 sha $ightarrow$ 4. 推送更新。
+
+## 7. 未來新工具自動化流程
+
+當您有新工具需求時（例如：「幫我做一個 PLC 位址轉換工具」），Hermes Agent 將執行以下標準化自動流程：
+
+1. **工具開發與部署**：
+   - 根據需求設計 HTML/CSS/JS。
+   - 建立專屬子資料夾（例如 `/plc-converter/index.html`）。
+   - 使用 API 方案將檔案部署至 GitHub 倉庫。
+
+2. **同步更新導覽首頁**：
+   - 自動讀取根目錄 `index.html` 的內容。
+   - 生成對應的新工具卡片（含圖標、描述與路徑）。
+   - 將新卡片插入工具清單中並推送更新。
+
+3. **即時上線**：
+   - GitHub Pages 自動觸發部署。
+   - 您只需刷新 [導覽首頁](https://greenstudio-mf.github.io/websites/) 即可立即使用新工具。
