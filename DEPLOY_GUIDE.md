@@ -102,14 +102,19 @@ def deploy_to_github(token, repo, path, local_file):
 
 1. **工具開發與部署**：
    - 根據需求設計 HTML/CSS/JS。
-   - 建立專屬子資料夾（例如 `/plc-converter/index.html`）。
+   - 建立專屬子資料夾（例如 `/new-tool/index.html`）。
    - 使用 API 方案將檔案部署至 GitHub 倉庫。
+   - **同步注入**：自動在工具頁面插入全域 Logo 與「返回首頁」按鈕。
 
 2. **同步更新導覽首頁**：
    - 自動讀取根目錄 `index.html` 的內容。
    - 生成對應的新工具卡片（含圖標、描述與路徑）。
    - 將新卡片插入工具清單中並推送更新。
 
-3. **即時上線**：
+3. **同步更新專案文檔 (README)**：
+   - **更新功能清單**：在 README 中新增該工具的目的與訪問路徑。
+   - **更新結構圖**：同步更新 `Repository Architecture` 區塊，確保檔案目錄樹反映最新實況。
+
+4. **即時上線**：
    - GitHub Pages 自動觸發部署。
    - 您只需刷新 [導覽首頁](https://greenstudio-mf.github.io/websites/) 即可立即使用新工具。
